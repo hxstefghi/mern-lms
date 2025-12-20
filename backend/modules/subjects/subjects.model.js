@@ -1,0 +1,100 @@
+import mongoose from 'mongoose';
+
+const scheduleSchema = new mongoose.Schema({
+  day: {
+    type: String,
+    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    required: true,
+  },
+  startTime: {
+    type: String,
+    required: true,
+  },
+  endTime: {
+    type: String,
+    required: true,
+  },
+  room: {
+    type: String,
+    required: true,
+  },
+});
+
+const subjectOfferingSchema = new mongoose.Schema({
+  schoolYear: {
+    type: String,
+    required: true,
+  },
+  semester: {
+    type: String,
+    enum: ['1st', '2nd', 'Summer'],
+    required: true,
+  },
+  instructor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  schedule: [scheduleSchema],
+  capacity: {
+    type: Number,
+    default: 40,
+  },
+  enrolled: {
+    type: Number,
+    default: 0,
+  },
+  isOpen: {
+    type: Boolean,
+    default: true,
+  },
+});
+
+const subjectSchema = new mongoose.Schema(
+  {
+    code: {
+      type: String,
+      required: [true, 'Subject code is required'],
+      unique: true,
+      uppercase: true,
+      trim: true,
+    },
+    name: {
+      type: String,
+      required: [true, 'Subject name is required'],
+      trim: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+    units: {
+      type: Number,
+      required: [true, 'Units is required'],
+      min: 1,
+      max: 6,
+    },
+    program: {
+      type: String,
+      required: [true, 'Program is required'],
+    },
+    yearLevel: {
+      type: String,
+      enum: ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'],
+      required: true,
+    },
+    prerequisites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subject',
+      },
+    ],
+    offerings: [subjectOfferingSchema],
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const Subject = mongoose.model('Subject', subjectSchema);
+
+export default Subject;
