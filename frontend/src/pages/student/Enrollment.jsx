@@ -7,8 +7,40 @@ const Enrollment = () => {
   const [student, setStudent] = useState(null);
   const [availableSubjects, setAvailableSubjects] = useState([]);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
-  const [schoolYear, setSchoolYear] = useState('2024-2025');
-  const [semester, setSemester] = useState('1st');
+  
+  // Auto-detect school year and semester
+  const getCurrentSchoolYear = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // January is 0
+    
+    // If month is August (8) to December (12), school year is current-next
+    // If month is January (1) to July (7), school year is previous-current
+    if (currentMonth >= 8) {
+      return `${currentYear}-${currentYear + 1}`;
+    } else {
+      return `${currentYear - 1}-${currentYear}`;
+    }
+  };
+  
+  const getCurrentSemester = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    
+    // August to December: 1st Semester
+    // January to May: 2nd Semester
+    // June to July: Summer
+    if (currentMonth >= 8 && currentMonth <= 12) {
+      return '1st';
+    } else if (currentMonth >= 1 && currentMonth <= 5) {
+      return '2nd';
+    } else {
+      return 'Summer';
+    }
+  };
+  
+  const [schoolYear, setSchoolYear] = useState(getCurrentSchoolYear());
+  const [semester, setSemester] = useState(getCurrentSemester());
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 

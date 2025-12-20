@@ -7,9 +7,12 @@ import {
   ClipboardList, 
   CreditCard,
   UserPlus,
+  GraduationCap,
   LogOut,
   Menu,
-  X
+  X,
+  BookCheck,
+  Calendar
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -28,7 +31,11 @@ const ModernAdminLayout = () => {
     { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/users', label: 'Users', icon: Users },
     { path: '/admin/students', label: 'Students', icon: UserPlus },
+    { path: '/admin/instructors', label: 'Instructors', icon: GraduationCap },
+    { path: '/admin/programs', label: 'Programs', icon: GraduationCap },
     { path: '/admin/subjects', label: 'Subjects', icon: BookOpen },
+    { path: '/admin/curriculum', label: 'Curriculum', icon: BookCheck },
+    { path: '/admin/subject-offerings', label: 'Subject Offerings', icon: Calendar },
     { path: '/admin/enrollments', label: 'Enrollments', icon: ClipboardList },
     { path: '/admin/tuition', label: 'Tuition', icon: CreditCard },
   ];

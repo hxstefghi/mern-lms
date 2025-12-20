@@ -2,11 +2,24 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { studentsAPI, enrollmentsAPI } from '../../api';
 import { Link } from 'react-router-dom';
+import { 
+  BookOpen, 
+  CreditCard, 
+  FileText, 
+  Calendar, 
+  AlertCircle, 
+  CheckCircle, 
+  Clock, 
+  GraduationCap,
+  TrendingUp,
+  Award,
+  ChevronRight
+} from 'lucide-react';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
   const [student, setStudent] = useState(null);
-  const [enrollments, setEnrollments] = useState([]);
+  const [currentEnrollment, setCurrentEnrollment] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,8 +31,13 @@ const StudentDashboard = () => {
       const studentRes = await studentsAPI.getStudentByUserId(user._id);
       setStudent(studentRes.data);
 
+      // Get current enrollment
       const enrollmentsRes = await enrollmentsAPI.getStudentEnrollments(studentRes.data._id);
-      setEnrollments(enrollmentsRes.data);
+      const enrollments = enrollmentsRes.data.enrollments || enrollmentsRes.data || [];
+      
+      // Find most recent enrollment
+      const current = enrollments.find(e => e.status === 'Approved' || e.status === 'Pending');
+      setCurrentEnrollment(current);
     } catch (error) {
       console.error('Error fetching student data:', error);
     } finally {
@@ -35,184 +53,282 @@ const StudentDashboard = () => {
     );
   }
 
-  const currentEnrollment = enrollments.find(
-    (e) => e.status === 'Approved' || e.status === 'Pending'
-  );
+  const getEnrollmentStatusConfig = (status) => {
+    switch (status) {
+      case 'Approved':
+        return { icon: CheckCircle, color: 'green', bg: 'bg-green-100', text: 'text-green-800', label: 'Enrolled' };
+      case 'Pending':
+        return { icon: Clock, color: 'yellow', bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' };
+      default:
+        return { icon: AlertCircle, color: 'gray', bg: 'bg-gray-100', text: 'text-gray-800', label: 'Not Enrolled' };
+    }
+  };
 
-  const isEnrolled = currentEnrollment && currentEnrollment.status === 'Approved';
+  const statusConfig = getEnrollmentStatusConfig(currentEnrollment?.status);
+  const StatusIcon = statusConfig.icon;
+  const totalSubjects = currentEnrollment?.subjects?.length || 0;
+  const totalUnits = currentEnrollment?.totalUnits || 0;
+  const isIrregular = currentEnrollment?.enrollmentType === 'Admin-Manual';
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Card */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg shadow-lg p-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">Welcome back, {user.firstName}!</h1>
-        <p className="text-blue-100">
-          {student?.program} - {student?.yearLevel}
-        </p>
-        <p className="text-blue-100">Student Number: {student?.studentNumber}</p>
-      </div>
-
-      {/* Not Enrolled Warning */}
-      {!isEnrolled && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <div className="flex items-start space-x-4">
-            <span className="text-3xl">⚠️</span>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Minimalist Header */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-yellow-800 mb-2">Not Currently Enrolled</h2>
-              <p className="text-yellow-700 mb-4">
-                You are not enrolled in any courses this semester. Please visit the Student Information System to enroll.
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <GraduationCap className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {user.firstName} {user.lastName}
+                  </h1>
+                  <p className="text-sm text-gray-500 mt-1">Student Dashboard</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-6 text-sm text-gray-600 ml-1">
+                <div className="flex items-center space-x-2">
+                  <Award className="w-4 h-4 text-indigo-500" />
+                  <span>{student?.program}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="w-4 h-4 text-purple-500" />
+                  <span>{student?.yearLevel}</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right bg-gray-50 rounded-xl px-6 py-4">
+              <div className="text-xs text-gray-500 mb-1">Student ID</div>
+              <div className="text-2xl font-bold text-gray-900">{student?.studentNumber}</div>
+            </div>
+          </div>
+
+          {/* Enrollment Status Banner */}
+          {currentEnrollment && (
+            <div className={`mt-6 p-4 rounded-xl border ${
+              statusConfig.color === 'green' 
+                ? 'bg-green-50 border-green-200' 
+                : statusConfig.color === 'yellow'
+                ? 'bg-yellow-50 border-yellow-200'
+                : 'bg-gray-50 border-gray-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <StatusIcon className={`w-5 h-5 ${
+                    statusConfig.color === 'green' ? 'text-green-600' :
+                    statusConfig.color === 'yellow' ? 'text-yellow-600' :
+                    'text-gray-600'
+                  }`} />
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {statusConfig.label}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {currentEnrollment.schoolYear} • {currentEnrollment.semester} Semester
+                    </div>
+                  </div>
+                </div>
+                {isIrregular && (
+                  <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg border border-orange-200">
+                    <AlertCircle className="w-4 h-4 text-orange-600" />
+                    <span className="text-xs font-medium text-orange-800">Irregular</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Irregular Notice */}
+        {isIrregular && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-orange-900 mb-1">Irregular Enrollment</h3>
+                <p className="text-xs text-orange-700">
+                  Your enrollment was customized by the registrar. Your subject list may differ from the standard curriculum.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stats Grid - Minimalist Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Subjects Card */}
+          <div className="group bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <BookOpen className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-gray-900">{totalSubjects}</div>
+              </div>
+            </div>
+            <div className="text-sm font-medium text-gray-600">Enrolled Subjects</div>
+          </div>
+
+          {/* Units Card */}
+          <div className="group bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FileText className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-gray-900">{totalUnits}</div>
+              </div>
+            </div>
+            <div className="text-sm font-medium text-gray-600">Total Units</div>
+          </div>
+
+          {/* Balance Card */}
+          <div className="group bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <CreditCard className="w-6 h-6 text-purple-600" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-gray-900">
+                  {currentEnrollment ? '₱0' : '-'}
+                </div>
+              </div>
+            </div>
+            <div className="text-sm font-medium text-gray-600">Balance</div>
+          </div>
+        </div>
+
+        {/* Info Notice - Minimalist */}
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-blue-900 mb-1">Auto-Enrollment System</h3>
+              <p className="text-xs text-blue-700 leading-relaxed">
+                Subjects are automatically assigned based on your curriculum, program, year level, and semester. 
+                Contact the registrar for enrollment adjustments.
               </p>
-              <Link
-                to="/sis/enrollment"
-                className="inline-flex items-center px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium"
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions - Minimalist Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link
+            to="/student/courses"
+            className="group bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-blue-200 transition-all duration-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                <BookOpen className="w-5 h-5 text-blue-600" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+            </div>
+            <div className="font-semibold text-gray-900 mb-1">My Subjects</div>
+            <div className="text-xs text-gray-500">View enrolled courses</div>
+          </Link>
+
+          <Link
+            to="/sis/registration"
+            className="group bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-green-200 transition-all duration-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-11 h-11 bg-green-50 rounded-xl flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                <FileText className="w-5 h-5 text-green-600" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-green-600 group-hover:translate-x-1 transition-all" />
+            </div>
+            <div className="font-semibold text-gray-900 mb-1">Registration</div>
+            <div className="text-xs text-gray-500">View registration card</div>
+          </Link>
+
+          <Link
+            to="/sis/tuition"
+            className="group bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-purple-200 transition-all duration-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-11 h-11 bg-purple-50 rounded-xl flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+                <CreditCard className="w-5 h-5 text-purple-600" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
+            </div>
+            <div className="font-semibold text-gray-900 mb-1">Tuition</div>
+            <div className="text-xs text-gray-500">Payment details</div>
+          </Link>
+
+          <Link
+            to="/sis/history"
+            className="group bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-orange-200 transition-all duration-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-11 h-11 bg-orange-50 rounded-xl flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                <Calendar className="w-5 h-5 text-orange-600" />
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
+            </div>
+            <div className="font-semibold text-gray-900 mb-1">History</div>
+            <div className="text-xs text-gray-500">Academic records</div>
+          </Link>
+        </div>
+
+        {/* Current Subjects - Minimalist List */}
+        {currentEnrollment && currentEnrollment.subjects && currentEnrollment.subjects.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">Current Subjects</h2>
+              <Link 
+                to="/student/courses" 
+                className="flex items-center space-x-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 group"
               >
-                <span className="mr-2">🎓</span>
-                Go to Enrollment
+                <span>View All</span>
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick Stats */}
-      {isEnrolled && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-600 mb-1">Current Semester</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {currentEnrollment?.semester || 'N/A'}
-            </div>
-            <div className="text-xs text-gray-500">{currentEnrollment?.schoolYear || ''}</div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-600 mb-1">Enrolled Units</div>
-            <div className="text-2xl font-bold text-blue-600">
-              {currentEnrollment?.totalUnits || 0}
-            </div>
-            <div className="text-xs text-gray-500">
-              {currentEnrollment?.subjects?.length || 0} subjects
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-600 mb-1">Year Level</div>
-            <div className="text-2xl font-bold text-green-600">{student?.yearLevel}</div>
-            <div className="text-xs text-gray-500">{student?.program}</div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-600 mb-1">Status</div>
-            <div className="text-2xl font-bold text-indigo-600">{student?.status}</div>
-            <div className="text-xs text-gray-500">Academic Status</div>
-          </div>
-        </div>
-      )}
-
-      {/* Current Enrollment */}
-      {isEnrolled && currentEnrollment && (
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Current Enrollment Overview</h2>
-            <p className="text-sm text-gray-600">
-              {currentEnrollment.schoolYear} - {currentEnrollment.semester} Semester
-            </p>
-          </div>
-          <div className="p-6">
-            <div className="space-y-3">
-              {currentEnrollment.subjects?.slice(0, 3).map((subject, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+            <div className="space-y-2">
+              {currentEnrollment.subjects.slice(0, 5).map((subjectEnrollment, idx) => (
+                <div 
+                  key={idx} 
+                  className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
                 >
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900">{subject.subject?.name}</div>
-                    <div className="text-sm text-gray-600">{subject.subject?.code}</div>
+                  <div className="flex items-center space-x-4 flex-1">
+                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                      <BookOpen className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900 text-sm">
+                        {subjectEnrollment.subject?.code}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {subjectEnrollment.subject?.name}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-900">
-                      {subject.subject?.units} units
+                  <div className="flex items-center space-x-3">
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-gray-900">
+                        {subjectEnrollment.subject?.units} units
+                      </div>
                     </div>
-                    <div
-                      className={`text-xs ${
-                        subject.status === 'Enrolled'
-                          ? 'text-green-600'
-                          : subject.status === 'Dropped'
-                          ? 'text-red-600'
-                          : 'text-gray-600'
-                      }`}
-                    >
-                      {subject.status}
-                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
                   </div>
                 </div>
               ))}
             </div>
-
-            {currentEnrollment.subjects?.length > 3 && (
-              <div className="mt-4 text-center text-sm text-gray-600">
-                ... and {currentEnrollment.subjects.length - 3} more courses
+            {currentEnrollment.subjects.length > 5 && (
+              <div className="text-center mt-4 pt-4 border-t border-gray-100">
+                <Link
+                  to="/student/courses"
+                  className="inline-flex items-center space-x-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                >
+                  <span>View {currentEnrollment.subjects.length - 5} more subjects</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
               </div>
             )}
-
-            <div className="mt-6">
-              <Link
-                to="/student/courses"
-                className="block w-full px-4 py-2 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700"
-              >
-                View All Courses
-              </Link>
-            </div>
           </div>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link
-          to="/student/courses"
-          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-        >
-          <div className="text-3xl mb-3">📚</div>
-          <div className="text-lg font-semibold text-gray-900 mb-2">My Courses</div>
-          <p className="text-sm text-gray-600">View your enrolled courses and schedules</p>
-        </Link>
-
-        <Link
-          to="/sis/enrollment"
-          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-        >
-          <div className="text-3xl mb-3">📝</div>
-          <div className="text-lg font-semibold text-gray-900 mb-2">Enrollment</div>
-          <p className="text-sm text-gray-600">Enroll in subjects for the upcoming semester</p>
-        </Link>
-
-        <Link
-          to="/sis/registration"
-          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-        >
-          <div className="text-3xl mb-3">📄</div>
-          <div className="text-lg font-semibold text-gray-900 mb-2">Registration Card</div>
-          <p className="text-sm text-gray-600">View and print your registration card</p>
-        </Link>
-
-        <Link
-          to="/sis/tuition"
-          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-        >
-          <div className="text-3xl mb-3">💰</div>
-          <div className="text-lg font-semibold text-gray-900 mb-2">Tuition & Fees</div>
-          <p className="text-sm text-gray-600">Check your tuition balance and payment history</p>
-        </Link>
-
-        <Link
-          to="/sis/history"
-          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-        >
-          <div className="text-3xl mb-3">🎓</div>
-          <div className="text-lg font-semibold text-gray-900 mb-2">Academic History</div>
-          <p className="text-sm text-gray-600">View your grades and academic records</p>
-        </Link>
+        )}
       </div>
     </div>
   );

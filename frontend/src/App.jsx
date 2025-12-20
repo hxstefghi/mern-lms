@@ -23,11 +23,17 @@ import AcademicHistory from './pages/student/AcademicHistory';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Users from './pages/admin/Users';
 import Students from './pages/admin/Students';
+import Instructors from './pages/admin/Instructors';
+import Programs from './pages/admin/Programs';
 import Subjects from './pages/admin/Subjects';
+import Curriculum from './pages/admin/Curriculum';
+import SubjectOfferings from './pages/admin/SubjectOfferings';
 import Enrollments from './pages/admin/Enrollments';
 
 // Instructor Pages
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
+import MySubjects from './pages/instructor/MySubjects';
+import SubjectDetail from './pages/instructor/SubjectDetail';
 
 function App() {
   return (
@@ -77,7 +83,11 @@ function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<Users />} />
             <Route path="students" element={<Students />} />
+            <Route path="instructors" element={<Instructors />} />
+            <Route path="programs" element={<Programs />} />
             <Route path="subjects" element={<Subjects />} />
+            <Route path="curriculum" element={<Curriculum />} />
+            <Route path="subject-offerings" element={<SubjectOfferings />} />
             <Route path="enrollments" element={<Enrollments />} />
           </Route>
 
@@ -91,6 +101,8 @@ function App() {
             }
           >
             <Route index element={<InstructorDashboard />} />
+            <Route path="subjects" element={<MySubjects />} />
+            <Route path="subjects/:subjectId/offering/:offeringId" element={<SubjectDetail />} />
           </Route>
 
           {/* Default Route */}

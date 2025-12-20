@@ -3,46 +3,41 @@ import { usersAPI } from '../../api';
 import { Users as UsersIcon, Plus, Edit2, Trash2, Search, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 
-const Users = () => {
-  const [users, setUsers] = useState([]);
+const Instructors = () => {
+  const [instructors, setInstructors] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [editingInstructor, setEditingInstructor] = useState(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     middleName: '',
     email: '',
     password: '',
-    role: 'student',
+    assignedProgram: '',
     isActive: true,
-    assignedProgram: '', // For instructors
   });
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
-  const fetchUsers = useCallback(async () => {
+  const fetchInstructors = useCallback(async () => {
     try {
       setLoading(true);
-      const params = {};
-      if (roleFilter !== 'all') params.role = roleFilter;
-      
-      const response = await usersAPI.getUsers(params);
-      setUsers(response.data.users || response.data);
+      const response = await usersAPI.getUsersByRole('instructor');
+      setInstructors(response.data || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      setError('Failed to load users');
+      console.error('Error fetching instructors:', error);
+      toast.error('Failed to load instructors');
+      setError('Failed to load instructors');
     } finally {
       setLoading(false);
     }
-  }, [roleFilter]);
+  }, []);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchInstructors();
+  }, [fetchInstructors]);
 
   useEffect(() => {
     const stored = localStorage.getItem('programs');
@@ -54,54 +49,64 @@ const Users = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     try {
-      if (editingUser) {
-        await usersAPI.updateUser(editingUser._id, formData);
-        toast.success('User updated successfully!');
-        setSuccess('User updated successfully');
+      if (editingInstructor) {
+        const updatePayload = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          middleName: formData.middleName,
+          email: formData.email,
+          assignedProgram: formData.assignedProgram,
+          isActive: formData.isActive,
+        };
+        if (formData.password) {
+          updatePayload.password = formData.password;
+        }
+        await usersAPI.updateUser(editingInstructor._id, updatePayload);
+        toast.success('Instructor updated successfully!');
       } else {
-        await usersAPI.createUser(formData);
-        toast.success('User created successfully!');
-        setSuccess('User created successfully');
+        const createPayload = {
+          ...formData,
+          role: 'instructor',
+        };
+        await usersAPI.createUser(createPayload);
+        toast.success('Instructor created successfully!');
       }
       
       setShowModal(false);
       resetForm();
-      await fetchUsers();
+      await fetchInstructors();
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Failed to save user';
+      const errorMsg = error.response?.data?.message || 'Failed to save instructor';
       toast.error(errorMsg);
       setError(errorMsg);
     }
   };
 
-  const handleEdit = (user) => {
-    setEditingUser(user);
+  const handleEdit = (instructor) => {
+    setEditingInstructor(instructor);
     setFormData({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      middleName: user.middleName || '',
-      email: user.email,
+      firstName: instructor.firstName,
+      lastName: instructor.lastName,
+      middleName: instructor.middleName || '',
+      email: instructor.email,
       password: '',
-      role: user.role,
-      assignedProgram: user.assignedProgram || '',
-      isActive: user.isActive,
+      assignedProgram: instructor.assignedProgram || '',
+      isActive: instructor.isActive,
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+  const handleDelete = async (instructorId) => {
+    if (!window.confirm('Are you sure you want to delete this instructor?')) return;
 
     try {
-      await usersAPI.deleteUser(userId);
-      toast.success('User deleted successfully!');
-      setSuccess('User deleted successfully');
-      fetchUsers();
+      await usersAPI.deleteUser(instructorId);
+      toast.success('Instructor deleted successfully!');
+      fetchInstructors();
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Failed to delete user';
+      const errorMsg = error.response?.data?.message || 'Failed to delete instructor';
       toast.error(errorMsg);
       setError(errorMsg);
     }
@@ -114,18 +119,18 @@ const Users = () => {
       middleName: '',
       email: '',
       password: '',
-      role: 'student',
       assignedProgram: '',
       isActive: true,
     });
-    setEditingUser(null);
+    setEditingInstructor(null);
     setError('');
   };
 
-  const filteredUsers = users.filter(user =>
-    user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredInstructors = instructors.filter(instructor =>
+    instructor?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    instructor?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    instructor?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    instructor?.assignedProgram?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -133,8 +138,8 @@ const Users = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Users Management</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage system users and their roles</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Instructors Management</h1>
+          <p className="text-sm text-gray-600 mt-1">Manage instructors and their program assignments</p>
         </div>
         <button
           onClick={() => {
@@ -144,7 +149,7 @@ const Users = () => {
           className="flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
         >
           <Plus className="w-4 h-4" />
-          <span>Add User</span>
+          <span>Add Instructor</span>
         </button>
       </div>
 
@@ -154,62 +159,45 @@ const Users = () => {
           {error}
         </div>
       )}
-      {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-          {success}
-        </div>
-      )}
 
-      {/* Filters */}
+      {/* Search */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          >
-            <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="instructor">Instructor</option>
-            <option value="student">Student</option>
-          </select>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search instructors..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Instructors Table */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <div className="text-gray-600">Loading...</div>
           </div>
-        ) : filteredUsers.length === 0 ? (
+        ) : filteredInstructors.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
             <UsersIcon className="w-12 h-12 text-gray-400 mb-4" />
-            <p className="text-gray-600">No users found</p>
+            <p className="text-gray-600">No instructors found</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User
+                    Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Email
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
+                    Assigned Program
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -220,48 +208,44 @@ const Users = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
+                {filteredInstructors.map((instructor) => (
+                  <tr key={instructor._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-medium text-xs mr-3">
-                          {user?.firstName?.[0]}{user?.lastName?.[0]}
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium text-xs mr-3">
+                          {instructor?.firstName?.[0]}{instructor?.lastName?.[0]}
                         </div>
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {user?.firstName} {user?.middleName && user.middleName[0] + '.'} {user?.lastName}
+                            {instructor?.firstName} {instructor?.middleName && instructor.middleName[0] + '.'} {instructor?.lastName}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {user.email}
+                      {instructor.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {instructor.assignedProgram || (
+                        <span className="text-gray-400 italic">Not assigned</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                        user.role === 'instructor' ? 'bg-blue-100 text-blue-800' :
-                        'bg-green-100 text-green-800'
+                        instructor.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {user.isActive ? 'Active' : 'Inactive'}
+                        {instructor.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => handleEdit(user)}
+                        onClick={() => handleEdit(instructor)}
                         className="text-indigo-600 hover:text-indigo-900 mr-3"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(user._id)}
+                        onClick={() => handleDelete(instructor._id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -281,7 +265,7 @@ const Users = () => {
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-900">
-                {editingUser ? 'Edit User' : 'Add New User'}
+                {editingInstructor ? 'Edit Instructor' : 'Add New Instructor'}
               </h2>
               <button
                 onClick={() => {
@@ -298,7 +282,7 @@ const Users = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    First Name
+                    First Name *
                   </label>
                   <input
                     type="text"
@@ -310,7 +294,7 @@ const Users = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Last Name
+                    Last Name *
                   </label>
                   <input
                     type="text"
@@ -336,7 +320,7 @@ const Users = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
+                  Email *
                 </label>
                 <input
                   type="email"
@@ -349,11 +333,11 @@ const Users = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password {editingUser && '(leave blank to keep current)'}
+                  Password {editingInstructor && '(leave blank to keep current)'}
                 </label>
                 <input
                   type="password"
-                  required={!editingUser}
+                  required={!editingInstructor}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -362,39 +346,22 @@ const Users = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
+                  Assigned Program *
                 </label>
                 <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  required
+                  value={formData.assignedProgram}
+                  onChange={(e) => setFormData({ ...formData, assignedProgram: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
-                  <option value="student">Student</option>
-                  <option value="instructor">Instructor</option>
-                  <option value="admin">Admin</option>
+                  <option value="">Select Program</option>
+                  {programs.map((program) => (
+                    <option key={program.id} value={program.name}>
+                      {program.code} - {program.name}
+                    </option>
+                  ))}
                 </select>
               </div>
-
-              {formData.role === 'instructor' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Assigned Program *
-                  </label>
-                  <select
-                    required
-                    value={formData.assignedProgram}
-                    onChange={(e) => setFormData({ ...formData, assignedProgram: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="">Select Program</option>
-                    {programs.map((program) => (
-                      <option key={program.id} value={program.name}>
-                        {program.code} - {program.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               <div className="flex items-center">
                 <input
@@ -405,7 +372,7 @@ const Users = () => {
                   className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 />
                 <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">
-                  Active User
+                  Active Instructor
                 </label>
               </div>
 
@@ -414,7 +381,7 @@ const Users = () => {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
                 >
-                  {editingUser ? 'Update' : 'Create'}
+                  {editingInstructor ? 'Update' : 'Create'}
                 </button>
                 <button
                   type="button"
@@ -435,4 +402,4 @@ const Users = () => {
   );
 };
 
-export default Users;
+export default Instructors;

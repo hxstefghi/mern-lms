@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { studentsAPI, usersAPI } from '../../api';
-import { UserPlus, Plus, Edit2, Trash2, Search, X } from 'lucide-react';
+import { UserPlus, Plus, Edit2, Trash2, Search, X, AlertCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const Students = () => {
   const [students, setStudents] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [studentUsers, setStudentUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -34,25 +36,37 @@ const Students = () => {
     fetchStudentUsers();
   }, []);
 
-  const fetchStudents = async () => {
-    try {
-      setLoading(true);
-      const response = await studentsAPI.getStudents({});
-      setStudents(response.data.students || response.data);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-      setError('Failed to load students');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const stored = localStorage.getItem('programs');
+    if (stored) {
+      setPrograms(JSON.parse(stored));
     }
-  };
+  }, []);
 
   const fetchStudentUsers = async () => {
     try {
       const response = await usersAPI.getUsersByRole('student');
-      setUsers(response.data);
+      console.log('Student Users Response:', response.data);
+      setStudentUsers(response.data || []);
     } catch (error) {
       console.error('Error fetching student users:', error);
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const response = await studentsAPI.getStudents({});
+      console.log('Students API Response:', response.data);
+      const studentsData = response.data.students || response.data;
+      console.log('Students Data:', studentsData);
+      setStudents(studentsData);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      toast.error('Failed to load students');
+      setError('Failed to load students');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,30 +85,33 @@ const Students = () => {
           emergencyContact: formData.emergencyContact,
         };
         await studentsAPI.updateStudent(editingStudent._id, updatePayload);
-        setSuccess('Student updated successfully');
+        toast.success('Student updated successfully!');
         setShowModal(false);
         resetForm();
-        fetchStudents();
-        fetchStudentUsers();
+        await fetchStudents();
       } else {
-        // Create user first
-        const userPayload = {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          middleName: formData.middleName,
-          email: formData.email,
-          password: formData.password,
-          role: 'student',
-          isActive: true,
-        };
-        const userResponse = await usersAPI.createUser(userPayload);
-        const userId = userResponse.data._id || userResponse.data.user?._id;
+        let userId = formData.user;
         
+        // Create user only if user field is empty
         if (!userId) {
-          throw new Error('Failed to create user account');
+          const userPayload = {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            middleName: formData.middleName,
+            email: formData.email,
+            password: formData.password,
+            role: 'student',
+            isActive: true,
+          };
+          const userResponse = await usersAPI.createUser(userPayload);
+          userId = userResponse.data._id || userResponse.data.user?._id;
+          
+          if (!userId) {
+            throw new Error('Failed to create user account');
+          }
         }
         
-        // Then create student profile
+        // Create student profile
         const studentPayload = {
           user: userId,
           program: formData.program,
@@ -103,17 +120,23 @@ const Students = () => {
           contactNumber: formData.contactNumber,
           emergencyContact: formData.emergencyContact,
         };
-        await studentsAPI.createStudent(studentPayload);
         
-        setSuccess('Student created successfully with auto-generated student number');
+        console.log('Creating student with payload:', studentPayload);
+        const studentResponse = await studentsAPI.createStudent(studentPayload);
+        console.log('Student created:', studentResponse.data);
+        
+        toast.success('Student created successfully with auto-generated student number!');
         setShowModal(false);
         resetForm();
-        fetchStudents();
-        fetchStudentUsers();
+        await fetchStudents();
+        await fetchStudentUsers();
       }
     } catch (error) {
       console.error('Student creation error:', error);
-      setError(error.response?.data?.message || error.message || 'Failed to save student');
+      console.error('Error response:', error.response);
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to save student';
+      toast.error(errorMsg);
+      setError(errorMsg);
     }
   };
 
@@ -144,10 +167,12 @@ const Students = () => {
 
     try {
       await studentsAPI.deleteStudent(studentId);
-      setSuccess('Student deleted successfully');
+      toast.success('Student deleted successfully!');
       fetchStudents();
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to delete student');
+      const errorMsg = error.response?.data?.message || 'Failed to delete student';
+      toast.error(errorMsg);
+      setError(errorMsg);
     }
   };
 
@@ -180,6 +205,32 @@ const Students = () => {
     student.program?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Find student users without profiles
+  const usersWithoutProfiles = studentUsers.filter(
+    user => !students.some(student => student.user?._id === user._id)
+  );
+
+  const handleCreateProfileForUser = (user) => {
+    setFormData({
+      user: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      middleName: user.middleName || '',
+      email: user.email,
+      password: '',
+      program: '',
+      yearLevel: '1st Year',
+      address: '',
+      contactNumber: '',
+      emergencyContact: {
+        name: '',
+        relationship: '',
+        contactNumber: '',
+      },
+    });
+    setShowModal(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -209,6 +260,45 @@ const Students = () => {
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
           {success}
+        </div>
+      )}
+
+      {/* Users Without Profiles */}
+      {usersWithoutProfiles.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-3" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-blue-900 mb-2">
+                {usersWithoutProfiles.length} Student User{usersWithoutProfiles.length > 1 ? 's' : ''} Without Profile
+              </h3>
+              <div className="space-y-2">
+                {usersWithoutProfiles.map(user => (
+                  <div key={user._id} className="flex items-center justify-between bg-white rounded px-3 py-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-xs font-medium text-blue-700">
+                          {user.firstName?.[0]}{user.lastName?.[0]}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {user.firstName} {user.lastName}
+                        </div>
+                        <div className="text-xs text-gray-500">{user.email}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleCreateProfileForUser(user)}
+                      className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    >
+                      Create Profile
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -416,14 +506,19 @@ const Students = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Program *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="e.g., BS Computer Science"
                     value={formData.program}
                     onChange={(e) => setFormData({ ...formData, program: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                  >
+                    <option value="">Select Program</option>
+                    {programs.map((program) => (
+                      <option key={program.id} value={program.name}>
+                        {program.code} - {program.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

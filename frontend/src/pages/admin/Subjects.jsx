@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { subjectsAPI } from '../../api';
-import { BookOpen, Plus, Edit2, Trash2, Search, X } from 'lucide-react';
+import { subjectsAPI, usersAPI } from '../../api';
+import { BookOpen, Plus, Edit2, Trash2, Search, X, Users } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const Subjects = () => {
   const [subjects, setSubjects] = useState([]);
+  const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showOfferingModal, setShowOfferingModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(null);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -17,11 +21,19 @@ const Subjects = () => {
     yearLevel: '1st Year',
     semester: '1st',
   });
+  const [offeringData, setOfferingData] = useState({
+    schoolYear: '',
+    semester: '1st',
+    instructor: '',
+    schedule: [],
+    capacity: 40,
+  });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
     fetchSubjects();
+    fetchInstructors();
   }, []);
 
   const fetchSubjects = async () => {
@@ -37,6 +49,15 @@ const Subjects = () => {
     }
   };
 
+  const fetchInstructors = async () => {
+    try {
+      const response = await usersAPI.getUsersByRole('instructor');
+      setInstructors(response.data || []);
+    } catch (error) {
+      console.error('Error fetching instructors:', error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -45,17 +66,19 @@ const Subjects = () => {
     try {
       if (editingSubject) {
         await subjectsAPI.updateSubject(editingSubject._id, formData);
-        setSuccess('Subject updated successfully');
+        toast.success('Subject updated successfully!');
       } else {
         await subjectsAPI.createSubject(formData);
-        setSuccess('Subject created successfully');
+        toast.success('Subject created successfully!');
       }
       
       setShowModal(false);
       resetForm();
       fetchSubjects();
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to save subject');
+      const errorMsg = error.response?.data?.message || 'Failed to save subject';
+      toast.error(errorMsg);
+      setError(errorMsg);
     }
   };
 
@@ -97,6 +120,56 @@ const Subjects = () => {
     });
     setEditingSubject(null);
     setError('');
+  };
+
+  const handleAssignInstructor = (subject) => {
+    setSelectedSubject(subject);
+    setOfferingData({
+      schoolYear: '',
+      semester: '1st',
+      instructor: '',
+      schedule: [],
+      capacity: 40,
+    });
+    setShowOfferingModal(true);
+  };
+
+  const handleOfferingSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    try {
+      await subjectsAPI.addSubjectOffering(selectedSubject._id, offeringData);
+      toast.success('Instructor assigned successfully!');
+      setShowOfferingModal(false);
+      setOfferingData({
+        schoolYear: '',
+        semester: '1st',
+        instructor: '',
+        schedule: [],
+        capacity: 40,
+      });
+      await fetchSubjects();
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to assign instructor';
+      toast.error(errorMsg);
+      setError(errorMsg);
+    }
+  };
+
+  const handleRemoveInstructor = async (subjectId, offeringId) => {
+    if (!window.confirm('Are you sure you want to remove this instructor assignment?')) return;
+
+    try {
+      await subjectsAPI.deleteSubjectOffering(subjectId, offeringId);
+      toast.success('Instructor removed successfully!');
+      fetchSubjects();
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to remove instructor';
+      toast.error(errorMsg);
+      setError(errorMsg);
+    }
   };
 
   const filteredSubjects = subjects.filter(subject =>
@@ -206,7 +279,37 @@ const Subjects = () => {
                 </div>
               </div>
 
+              {/* Assigned Instructors */}
+              {subject.offerings && subject.offerings.length > 0 && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="text-xs font-medium text-gray-700 mb-2">Assigned Instructors:</div>
+                  <div className="space-y-2">
+                    {subject.offerings.map((offering) => offering.instructor && (
+                      <div key={offering._id} className="flex items-center justify-between">
+                        <div className="text-sm text-gray-900">
+                          {offering.instructor.firstName} {offering.instructor.lastName}
+                          <span className="text-xs text-gray-500 ml-2">({offering.schoolYear} - {offering.semester})</span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveInstructor(subject._id, offering._id)}
+                          className="text-red-500 hover:text-red-700 text-xs"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex space-x-2 pt-4 border-t border-gray-100">
+                <button
+                  onClick={() => handleAssignInstructor(subject)}
+                  className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm font-medium text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Assign</span>
+                </button>
                 <button
                   onClick={() => handleEdit(subject)}
                   className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
@@ -363,6 +466,105 @@ const Subjects = () => {
                     setShowModal(false);
                     resetForm();
                   }}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Offering/Instructor Assignment Modal */}
+      {showOfferingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Assign Instructor to {selectedSubject?.code}
+              </h2>
+              <button
+                onClick={() => setShowOfferingModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleOfferingSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  School Year *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., 2023-2024"
+                  value={offeringData.schoolYear}
+                  onChange={(e) => setOfferingData({ ...offeringData, schoolYear: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Semester *
+                </label>
+                <select
+                  value={offeringData.semester}
+                  onChange={(e) => setOfferingData({ ...offeringData, semester: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="1st">1st Semester</option>
+                  <option value="2nd">2nd Semester</option>
+                  <option value="Summer">Summer</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Instructor *
+                </label>
+                <select
+                  required
+                  value={offeringData.instructor}
+                  onChange={(e) => setOfferingData({ ...offeringData, instructor: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">Select Instructor</option>
+                  {instructors.map((instructor) => (
+                    <option key={instructor._id} value={instructor._id}>
+                      {instructor.firstName} {instructor.lastName}
+                      {instructor.assignedProgram && ` - ${instructor.assignedProgram}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Class Capacity
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={offeringData.capacity}
+                  onChange={(e) => setOfferingData({ ...offeringData, capacity: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                >
+                  Assign Instructor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowOfferingModal(false)}
                   className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                 >
                   Cancel
