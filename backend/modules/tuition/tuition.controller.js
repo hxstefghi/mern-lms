@@ -115,7 +115,7 @@ export const getStudentTuitions = asyncHandler(async (req, res) => {
 // @route   POST /api/tuitions
 // @access  Private/Admin
 export const createTuition = asyncHandler(async (req, res) => {
-  const { enrollmentId, paymentPlan, additionalFees, discount, discountReason } = req.body;
+  const { enrollmentId, paymentPlan: requestedPaymentPlan, additionalFees, discount, discountReason } = req.body;
 
   // Check if enrollment exists
   const enrollment = await Enrollment.findById(enrollmentId).populate('subjects.subject');
@@ -131,6 +131,9 @@ export const createTuition = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error('Tuition record already exists for this enrollment');
   }
+
+  // Use payment plan from enrollment if not provided
+  const paymentPlan = requestedPaymentPlan || enrollment.paymentPlan || 'Set A';
 
   // Calculate tuition breakdown
   const breakdown = [];

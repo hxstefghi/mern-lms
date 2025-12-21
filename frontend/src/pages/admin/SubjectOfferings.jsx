@@ -29,7 +29,7 @@ const SubjectOfferings = () => {
   const loadData = async () => {
     try {
       // Load subjects
-      const subjectsResponse = await subjectsAPI.getSubjects({});
+      const subjectsResponse = await subjectsAPI.getSubjects({ limit: 1000 });
       const subjectsData = subjectsResponse.data.subjects || subjectsResponse.data || [];
       setSubjects(subjectsData);
 

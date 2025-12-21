@@ -31,12 +31,13 @@ const checkScheduleConflict = (schedule1, schedule2) => {
 // @route   GET /api/enrollments
 // @access  Private/Admin
 export const getEnrollments = asyncHandler(async (req, res) => {
-  const { schoolYear, semester, status, page = 1, limit = 10 } = req.query;
+  const { schoolYear, semester, status, studentId, page = 1, limit = 10 } = req.query;
 
   const query = {};
   if (schoolYear) query.schoolYear = schoolYear;
   if (semester) query.semester = semester;
   if (status) query.status = status;
+  if (studentId) query.student = studentId;
 
   const enrollments = await Enrollment.find(query)
     .populate({
@@ -151,7 +152,7 @@ export const getStudentEnrollments = asyncHandler(async (req, res) => {
 // @route   POST /api/enrollments
 // @access  Private
 export const createEnrollment = asyncHandler(async (req, res) => {
-  const { studentId, schoolYear, semester, subjects, enrollmentType } = req.body;
+  const { studentId, schoolYear, semester, subjects, enrollmentType, paymentPlan } = req.body;
 
   // Check if student exists
   const student = await Student.findById(studentId);
@@ -266,11 +267,83 @@ export const createEnrollment = asyncHandler(async (req, res) => {
     semester,
     subjects: enrollmentSubjects,
     totalUnits,
+    paymentPlan: paymentPlan || 'Set A',
     enrollmentType: enrollmentType || 'Self',
     status: enrollmentType === 'Admin' ? 'Approved' : 'Pending',
     approvedBy: enrollmentType === 'Admin' ? req.user.id : undefined,
     approvalDate: enrollmentType === 'Admin' ? new Date() : undefined,
   });
+
+  // Auto-create tuition for admin enrollments (immediately approved)
+  if (enrollmentType === 'Admin') {
+    const Tuition = (await import('../tuition/tuition.model.js')).default;
+    
+    console.log('Creating tuition for admin enrollment:', enrollment._id);
+    
+    // Calculate tuition
+    const TUITION_PER_UNIT = 500;
+    const MISC_FEES = 5000;
+    const FULL_PAYMENT_DISCOUNT = 0.05;
+    
+    const breakdown = [];
+    const baseTuition = totalUnits * TUITION_PER_UNIT;
+    breakdown.push({
+      description: `Tuition Fee (${totalUnits} units × ${TUITION_PER_UNIT})`,
+      amount: baseTuition,
+    });
+    
+    breakdown.push({
+      description: 'Miscellaneous Fees',
+      amount: MISC_FEES,
+    });
+    
+    const totalAmount = breakdown.reduce((sum, item) => sum + item.amount, 0);
+    
+    // Apply discount for Set A
+    let discount = 0;
+    if (paymentPlan === 'Set A') {
+      discount = totalAmount * FULL_PAYMENT_DISCOUNT;
+    }
+    
+    const netAmount = totalAmount - discount;
+    
+    // Create installments for Set B
+    const installments = [];
+    let dueDate = new Date();
+    
+    if (paymentPlan === 'Set B') {
+      const installmentAmount = netAmount / 4;
+      for (let i = 1; i <= 4; i++) {
+        const installmentDueDate = new Date();
+        installmentDueDate.setMonth(installmentDueDate.getMonth() + i);
+        installments.push({
+          installmentNumber: i,
+          amount: installmentAmount,
+          dueDate: installmentDueDate,
+        });
+      }
+      dueDate = installments[0].dueDate;
+    } else {
+      dueDate.setDate(dueDate.getDate() + 30);
+    }
+    
+    await Tuition.create({
+      enrollment: enrollment._id,
+      student: studentId,
+      schoolYear,
+      semester,
+      breakdown,
+      totalAmount,
+      paymentPlan: paymentPlan || 'Set A',
+      discount,
+      netAmount,
+      balance: netAmount,
+      installments,
+      dueDate,
+    });
+    
+    console.log('Tuition created successfully for admin enrollment');
+  }
 
   const populatedEnrollment = await Enrollment.findById(enrollment._id)
     .populate({
@@ -291,7 +364,7 @@ export const createEnrollment = asyncHandler(async (req, res) => {
 export const updateEnrollmentStatus = asyncHandler(async (req, res) => {
   const { status, remarks } = req.body;
 
-  const enrollment = await Enrollment.findById(req.params.id);
+  const enrollment = await Enrollment.findById(req.params.id).populate('subjects.subject');
 
   if (!enrollment) {
     res.status(404);
@@ -304,6 +377,78 @@ export const updateEnrollmentStatus = asyncHandler(async (req, res) => {
   if (status === 'Approved') {
     enrollment.approvedBy = req.user.id;
     enrollment.approvalDate = new Date();
+
+    // Auto-create tuition record if it doesn't exist
+    const Tuition = (await import('../tuition/tuition.model.js')).default;
+    const existingTuition = await Tuition.findOne({ enrollment: enrollment._id });
+    
+    if (!existingTuition) {
+      console.log('Creating tuition for enrollment:', enrollment._id);
+      
+      // Calculate tuition
+      const TUITION_PER_UNIT = 500;
+      const MISC_FEES = 5000;
+      const FULL_PAYMENT_DISCOUNT = 0.05;
+      
+      const breakdown = [];
+      const baseTuition = enrollment.totalUnits * TUITION_PER_UNIT;
+      breakdown.push({
+        description: `Tuition Fee (${enrollment.totalUnits} units × ${TUITION_PER_UNIT})`,
+        amount: baseTuition,
+      });
+      
+      breakdown.push({
+        description: 'Miscellaneous Fees',
+        amount: MISC_FEES,
+      });
+      
+      const totalAmount = breakdown.reduce((sum, item) => sum + item.amount, 0);
+      
+      // Apply discount for Set A
+      let discount = 0;
+      if (enrollment.paymentPlan === 'Set A') {
+        discount = totalAmount * FULL_PAYMENT_DISCOUNT;
+      }
+      
+      const netAmount = totalAmount - discount;
+      
+      // Create installments for Set B
+      const installments = [];
+      let dueDate = new Date();
+      
+      if (enrollment.paymentPlan === 'Set B') {
+        const installmentAmount = netAmount / 4;
+        for (let i = 1; i <= 4; i++) {
+          const installmentDueDate = new Date();
+          installmentDueDate.setMonth(installmentDueDate.getMonth() + i);
+          installments.push({
+            installmentNumber: i,
+            amount: installmentAmount,
+            dueDate: installmentDueDate,
+          });
+        }
+        dueDate = installments[0].dueDate;
+      } else {
+        dueDate.setDate(dueDate.getDate() + 30);
+      }
+      
+      await Tuition.create({
+        enrollment: enrollment._id,
+        student: enrollment.student,
+        schoolYear: enrollment.schoolYear,
+        semester: enrollment.semester,
+        breakdown,
+        totalAmount,
+        paymentPlan: enrollment.paymentPlan || 'Set A',
+        discount,
+        netAmount,
+        balance: netAmount,
+        installments,
+        dueDate,
+      });
+      
+      console.log('Tuition created successfully');
+    }
   }
 
   // If rejected, decrement enrolled count in offerings

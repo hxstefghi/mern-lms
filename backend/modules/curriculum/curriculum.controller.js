@@ -138,6 +138,29 @@ export const createCurriculum = async (req, res) => {
 // Update curriculum
 export const updateCurriculum = async (req, res) => {
   try {
+    console.log('Updating curriculum:', req.params.id);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    // Validate subject IDs
+    if (req.body.subjects && Array.isArray(req.body.subjects)) {
+      const mongoose = await import('mongoose');
+      const invalidSubjects = req.body.subjects.filter(s => {
+        if (!s.subject) return true;
+        if (!mongoose.default.Types.ObjectId.isValid(s.subject)) return true;
+        return false;
+      });
+      
+      if (invalidSubjects.length > 0) {
+        console.error('Invalid subject IDs detected:', invalidSubjects);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid subject IDs detected',
+          error: 'Some subjects have invalid or missing IDs',
+          invalidSubjects,
+        });
+      }
+    }
+    
     const curriculum = await Curriculum.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -158,6 +181,7 @@ export const updateCurriculum = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating curriculum:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error updating curriculum',

@@ -34,12 +34,28 @@ const Curriculum = () => {
     loadData();
   }, []);
 
+  // Generate school year options (previous, current, next)
+  const getSchoolYearOptions = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const options = [];
+    
+    // Generate 3 school years: previous, current, and next
+    for (let i = -1; i <= 1; i++) {
+      const startYear = currentYear + i;
+      const endYear = startYear + 1;
+      options.push(`${startYear}-${endYear}`);
+    }
+    
+    return options;
+  };
+
   const loadData = async () => {
     try {
       const [programsRes, subjectsRes, curriculaRes] = await Promise.all([
-        programsAPI.getPrograms({}),
-        subjectsAPI.getSubjects({}),
-        curriculumAPI.getCurricula({}),
+        programsAPI.getPrograms({ limit: 1000 }),
+        subjectsAPI.getSubjects({ limit: 1000 }),
+        curriculumAPI.getCurricula({ limit: 1000 }),
       ]);
 
       console.log('Curricula Response:', curriculaRes.data);
@@ -68,12 +84,43 @@ const Curriculum = () => {
       return;
     }
 
+    // Filter out any invalid subjects instead of blocking the entire update
+    const validSubjects = formData.subjects.filter(s => {
+      const isValid = s.subject && 
+                     s.subject !== 'undefined' && 
+                     s.subject !== 'null' && 
+                     s.subject !== '';
+      if (!isValid) {
+        console.warn('Filtering out invalid subject:', s);
+      }
+      return isValid;
+    });
+
+    if (validSubjects.length === 0) {
+      toast.error('No valid subjects to save. Please add subjects.');
+      return;
+    }
+
+    if (validSubjects.length < formData.subjects.length) {
+      const removedCount = formData.subjects.length - validSubjects.length;
+      console.warn(`Removed ${removedCount} invalid subject(s)`);
+    }
+
+    const submissionData = {
+      ...formData,
+      subjects: validSubjects,
+    };
+
     try {
+      console.log('Submitting curriculum data:', submissionData);
+      
       if (editingCurriculum) {
-        await curriculumAPI.updateCurriculum(editingCurriculum._id, formData);
+        const response = await curriculumAPI.updateCurriculum(editingCurriculum._id, submissionData);
+        console.log('Update response:', response);
         toast.success('Curriculum updated successfully!');
       } else {
-        await curriculumAPI.createCurriculum(formData);
+        const response = await curriculumAPI.createCurriculum(submissionData);
+        console.log('Create response:', response);
         toast.success('Curriculum created successfully!');
       }
       
@@ -82,24 +129,42 @@ const Curriculum = () => {
       resetForm();
     } catch (error) {
       console.error('Error saving curriculum:', error);
-      toast.error(error.response?.data?.message || 'Failed to save curriculum');
+      console.error('Error details:', error.response?.data);
+      toast.error(error.response?.data?.error || error.response?.data?.message || 'Failed to save curriculum');
     }
   };
 
   const handleEdit = (curriculum) => {
+    console.log('Editing curriculum:', curriculum);
     setEditingCurriculum(curriculum);
     setFormData({
       program: curriculum.program,
       effectiveYear: curriculum.effectiveYear,
       description: curriculum.description || '',
       status: curriculum.status || 'Active',
-      subjects: curriculum.subjects.map(s => ({
-        subject: s.subject._id || s.subject,
-        yearLevel: s.yearLevel,
-        semester: s.semester,
-        isRequired: s.isRequired !== false,
-        prerequisites: s.prerequisites?.map(p => p._id || p) || [],
-      })),
+      subjects: curriculum.subjects.map(s => {
+        // Handle both populated and non-populated subject references
+        let subjectId;
+        if (typeof s.subject === 'string') {
+          subjectId = s.subject;
+        } else if (s.subject && s.subject._id) {
+          subjectId = s.subject._id;
+        } else if (s.subject) {
+          subjectId = s.subject;
+        }
+        
+        return {
+          subject: subjectId,
+          yearLevel: s.yearLevel,
+          semester: s.semester,
+          isRequired: s.isRequired !== false,
+          prerequisites: s.prerequisites?.map(p => {
+            if (typeof p === 'string') return p;
+            if (p && p._id) return p._id;
+            return p;
+          }) || [],
+        };
+      }),
     });
     setShowModal(true);
   };
@@ -382,14 +447,19 @@ const Curriculum = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Effective Year *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="e.g., 2024-2025"
                     value={formData.effectiveYear}
                     onChange={(e) => setFormData({ ...formData, effectiveYear: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  />
+                  >
+                    <option value="">Select school year</option>
+                    {getSchoolYearOptions().map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -471,27 +541,42 @@ const Curriculum = () => {
                   {subjects.length === 0 ? (
                     <p className="text-sm text-gray-500">No subjects available. Please create subjects first.</p>
                   ) : (
-                    subjects.map((subject) => (
-                      <label
-                        key={subject._id}
-                        className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSubjectSelected(subject._id, currentSubject.yearLevel, currentSubject.semester)}
-                          onChange={() => toggleSubject(subject._id, currentSubject.yearLevel, currentSubject.semester)}
-                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                        />
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">
-                            {subject.code} - {subject.name}
+                    subjects
+                      .filter((subject) => {
+                        // Filter by program if program is selected
+                        const programMatch = !formData.program || subject.program === formData.program;
+                        // Filter by year level
+                        const yearLevelMatch = subject.yearLevel === currentSubject.yearLevel;
+                        return programMatch && yearLevelMatch;
+                      })
+                      .map((subject) => (
+                        <label
+                          key={subject._id}
+                          className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSubjectSelected(subject._id, currentSubject.yearLevel, currentSubject.semester)}
+                            onChange={() => toggleSubject(subject._id, currentSubject.yearLevel, currentSubject.semester)}
+                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                          />
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900">
+                              {subject.code} - {subject.name}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {subject.units} units{subject.program ? ` | ${subject.program}` : ''}{subject.yearLevel ? ` | ${subject.yearLevel}` : ''}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {subject.units} units{subject.program ? ` | ${subject.program}` : ''}{subject.yearLevel ? ` | ${subject.yearLevel}` : ''}
-                          </div>
-                        </div>
-                      </label>
-                    ))
+                        </label>
+                      ))
+                  )}
+                  {subjects.filter((subject) => {
+                    const programMatch = !formData.program || subject.program === formData.program;
+                    const yearLevelMatch = subject.yearLevel === currentSubject.yearLevel;
+                    return programMatch && yearLevelMatch;
+                  }).length === 0 && formData.program && (
+                    <p className="text-sm text-gray-500">No subjects available for {formData.program} - {currentSubject.yearLevel}</p>
                   )}
                 </div>
               </div>

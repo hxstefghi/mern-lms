@@ -40,7 +40,7 @@ const Subjects = () => {
   const fetchSubjects = async () => {
     try {
       setLoading(true);
-      const response = await subjectsAPI.getSubjects({});
+      const response = await subjectsAPI.getSubjects({ limit: 1000 }); // Fetch all subjects
       setSubjects(response.data.subjects || response.data);
     } catch (error) {
       console.error('Error fetching subjects:', error);
@@ -143,14 +143,18 @@ const Subjects = () => {
     setSuccess('');
 
     try {
-      // Create a schedule entry with the room
-      const scheduleWithRoom = offeringData.room ? [
-        { day: 'Monday', startTime: '08:00', endTime: '10:00', room: offeringData.room }
-      ] : [];
+      // Create a basic schedule entry
+      const schedule = [
+        { day: 'Monday', startTime: '08:00', endTime: '10:00' }
+      ];
 
       const submissionData = {
-        ...offeringData,
-        schedule: scheduleWithRoom
+        schoolYear: offeringData.schoolYear,
+        semester: offeringData.semester,
+        instructor: offeringData.instructor,
+        schedule: schedule,
+        capacity: offeringData.capacity,
+        room: offeringData.room,
       };
 
       await subjectsAPI.addSubjectOffering(selectedSubject._id, submissionData);

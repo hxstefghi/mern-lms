@@ -25,12 +25,12 @@ const Tuitions = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const params = {};
+      const params = { limit: 1000 }; // Fetch all tuitions
       if (statusFilter !== 'all') params.status = statusFilter;
 
       const [tuitionRes, studentsRes] = await Promise.all([
         tuitionAPI.getTuitions(params),
-        studentsAPI.getStudents({}),
+        studentsAPI.getStudents({ limit: 1000 }), // Fetch all students
       ]);
 
       setTuitions(tuitionRes.data.tuitions || tuitionRes.data || []);

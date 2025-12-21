@@ -41,7 +41,7 @@ const SubjectDetail = () => {
 
   const fetchEnrolledStudents = useCallback(async () => {
     try {
-      const response = await enrollmentsAPI.getEnrollments({});
+      const response = await enrollmentsAPI.getEnrollments({ limit: 1000 });
       const allEnrollments = response.data.enrollments || response.data;
       
       const relevantEnrollments = allEnrollments.filter(enrollment =>

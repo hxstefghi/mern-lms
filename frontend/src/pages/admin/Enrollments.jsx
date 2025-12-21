@@ -18,13 +18,20 @@ const Enrollments = () => {
   const [enrollmentData, setEnrollmentData] = useState({
     schoolYear: '',
     semester: '1st',
+    paymentPlan: 'Set A',
   });
+  
+  // Tuition constants
+  const TUITION_PER_UNIT = 500;
+  const MISC_FEES = 5000;
+  const FULL_PAYMENT_DISCOUNT = 0.05;
   const [blockedSectionData, setBlockedSectionData] = useState({
     schoolYear: '',
     semester: '1st',
     program: '',
     yearLevel: '',
     offerings: {}, // Map of subjectId to offeringId
+    paymentPlan: 'Set A',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -47,7 +54,7 @@ const Enrollments = () => {
 
   const fetchStudents = useCallback(async () => {
     try {
-      const response = await studentsAPI.getStudents({});
+      const response = await studentsAPI.getStudents({ limit: 1000 });
       setStudents(response.data.students || response.data);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -172,6 +179,7 @@ const Enrollments = () => {
         semester: enrollmentData.semester,
         subjects: subjectsPayload,
         enrollmentType: 'Admin',
+        paymentPlan: enrollmentData.paymentPlan,
       };
 
       await enrollmentsAPI.createEnrollment(payload);
@@ -193,6 +201,7 @@ const Enrollments = () => {
     setEnrollmentData({
       schoolYear: '',
       semester: '1st',
+      paymentPlan: 'Set A',
     });
     setError('');
   };
@@ -244,6 +253,7 @@ const Enrollments = () => {
           semester: blockedSectionData.semester,
           subjects,
           enrollmentType: 'Admin',
+          paymentPlan: blockedSectionData.paymentPlan,
         });
       });
 
@@ -267,6 +277,7 @@ const Enrollments = () => {
       program: '',
       yearLevel: '',
       offerings: {},
+      paymentPlan: 'Set A',
     });
     setSubjects([]);
     setError('');
@@ -634,6 +645,96 @@ const Enrollments = () => {
                     )}
                   </div>
 
+                  {/* Payment Plan Selection */}
+                  {selectedSubjects.length > 0 && (
+                    <div className="border-t border-gray-200 pt-4">
+                      <h3 className="text-sm font-medium text-gray-900 mb-3">Payment Plan *</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div
+                          onClick={() => setEnrollmentData({ ...enrollmentData, paymentPlan: 'Set A' })}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            enrollmentData.paymentPlan === 'Set A'
+                              ? 'border-indigo-600 bg-indigo-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-gray-900">Set A - Full Payment</h4>
+                            <input
+                              type="radio"
+                              name="paymentPlan"
+                              checked={enrollmentData.paymentPlan === 'Set A'}
+                              onChange={() => {}}
+                              className="w-4 h-4 text-indigo-600"
+                            />
+                          </div>
+                          <p className="text-sm text-gray-600">Pay in full and get 5% discount</p>
+                          <p className="text-xs text-green-600 mt-1">✓ Save money with discount</p>
+                        </div>
+                        <div
+                          onClick={() => setEnrollmentData({ ...enrollmentData, paymentPlan: 'Set B' })}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            enrollmentData.paymentPlan === 'Set B'
+                              ? 'border-indigo-600 bg-indigo-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-gray-900">Set B - Installment</h4>
+                            <input
+                              type="radio"
+                              name="paymentPlan"
+                              checked={enrollmentData.paymentPlan === 'Set B'}
+                              onChange={() => {}}
+                              className="w-4 h-4 text-indigo-600"
+                            />
+                          </div>
+                          <p className="text-sm text-gray-600">Pay in 4 monthly installments</p>
+                          <p className="text-xs text-blue-600 mt-1">✓ Flexible payment schedule</p>
+                        </div>
+                      </div>
+
+                      {/* Tuition Estimate */}
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-3">Estimated Tuition</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Tuition Fee ({getTotalUnits()} units × ₱{TUITION_PER_UNIT}):</span>
+                            <span>₱{(getTotalUnits() * TUITION_PER_UNIT).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Miscellaneous Fees:</span>
+                            <span>₱{MISC_FEES.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between font-medium pt-2 border-t border-gray-300">
+                            <span className="text-gray-700">Subtotal:</span>
+                            <span>₱{(getTotalUnits() * TUITION_PER_UNIT + MISC_FEES).toLocaleString()}</span>
+                          </div>
+                          {enrollmentData.paymentPlan === 'Set A' && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Full Payment Discount (5%):</span>
+                              <span>-₱{((getTotalUnits() * TUITION_PER_UNIT + MISC_FEES) * FULL_PAYMENT_DISCOUNT).toLocaleString()}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-bold text-lg pt-2 border-t-2 border-gray-300">
+                            <span className="text-gray-900">Total Amount:</span>
+                            <span className="text-indigo-600">
+                              ₱{(enrollmentData.paymentPlan === 'Set A' 
+                                ? (getTotalUnits() * TUITION_PER_UNIT + MISC_FEES) * (1 - FULL_PAYMENT_DISCOUNT)
+                                : getTotalUnits() * TUITION_PER_UNIT + MISC_FEES
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                          {enrollmentData.paymentPlan === 'Set B' && (
+                            <p className="text-xs text-gray-500 pt-1">
+                              4 installments of ₱{((getTotalUnits() * TUITION_PER_UNIT + MISC_FEES) / 4).toLocaleString()} each
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex space-x-3 pt-4">
                     <button
                       type="submit"
@@ -834,6 +935,57 @@ const Enrollments = () => {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Plan Selection */}
+              {selectedStudents.length > 0 && Object.keys(blockedSectionData.offerings).length > 0 && (
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Plan *</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div
+                      onClick={() => setBlockedSectionData({ ...blockedSectionData, paymentPlan: 'Set A' })}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        blockedSectionData.paymentPlan === 'Set A'
+                          ? 'border-purple-600 bg-purple-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-gray-900">Set A - Full Payment</h4>
+                        <input
+                          type="radio"
+                          name="blockedPaymentPlan"
+                          checked={blockedSectionData.paymentPlan === 'Set A'}
+                          onChange={() => {}}
+                          className="w-4 h-4 text-purple-600"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-600">Pay in full and get 5% discount</p>
+                      <p className="text-xs text-green-600 mt-1">✓ Save money with discount</p>
+                    </div>
+                    <div
+                      onClick={() => setBlockedSectionData({ ...blockedSectionData, paymentPlan: 'Set B' })}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        blockedSectionData.paymentPlan === 'Set B'
+                          ? 'border-purple-600 bg-purple-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-gray-900">Set B - Installment</h4>
+                        <input
+                          type="radio"
+                          name="blockedPaymentPlan"
+                          checked={blockedSectionData.paymentPlan === 'Set B'}
+                          onChange={() => {}}
+                          className="w-4 h-4 text-purple-600"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-600">Pay in 4 monthly installments</p>
+                      <p className="text-xs text-blue-600 mt-1">✓ Flexible payment schedule</p>
+                    </div>
                   </div>
                 </div>
               )}

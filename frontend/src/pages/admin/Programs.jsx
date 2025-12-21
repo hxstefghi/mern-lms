@@ -28,7 +28,7 @@ const Programs = () => {
   const loadPrograms = async () => {
     try {
       setLoading(true);
-      const response = await programsAPI.getPrograms({});
+      const response = await programsAPI.getPrograms({ limit: 1000 });
       setPrograms(response.data.data || response.data || []);
     } catch (error) {
       console.error('Error loading programs:', error);

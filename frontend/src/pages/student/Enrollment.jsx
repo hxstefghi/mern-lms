@@ -7,6 +7,28 @@ const Enrollment = () => {
   const [student, setStudent] = useState(null);
   const [curriculumSubjects, setCurriculumSubjects] = useState([]);
   const [selectedOfferings, setSelectedOfferings] = useState({});
+  const [paymentPlan, setPaymentPlan] = useState('Set A');
+  
+  // Tuition constants
+  const TUITION_PER_UNIT = 500;
+  const MISC_FEES = 5000;
+  const FULL_PAYMENT_DISCOUNT = 0.05;
+  
+  // Generate school year options (previous, current, next)
+  const getSchoolYearOptions = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const options = [];
+    
+    // Generate 3 school years: previous, current, and next
+    for (let i = -1; i <= 1; i++) {
+      const startYear = currentYear + i;
+      const endYear = startYear + 1;
+      options.push(`${startYear}-${endYear}`);
+    }
+    
+    return options;
+  };
   
   // Auto-detect school year and semester
   const getCurrentSchoolYear = () => {
@@ -43,6 +65,7 @@ const Enrollment = () => {
   const [semester, setSemester] = useState(getCurrentSemester());
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [existingEnrollment, setExistingEnrollment] = useState(null);
 
   useEffect(() => {
     fetchStudentData();
@@ -51,8 +74,30 @@ const Enrollment = () => {
   useEffect(() => {
     if (student) {
       fetchCurriculumSubjects();
+      checkExistingEnrollment();
     }
   }, [student, schoolYear, semester]);
+
+  const checkExistingEnrollment = async () => {
+    try {
+      if (!student?._id) return;
+      
+      const response = await enrollmentsAPI.getEnrollments({
+        studentId: student._id,
+        schoolYear,
+        semester,
+      });
+      
+      const enrollments = response.data.enrollments || response.data || [];
+      const existing = enrollments.find(
+        e => e.student?._id === student._id || e.student === student._id
+      );
+      
+      setExistingEnrollment(existing || null);
+    } catch (error) {
+      console.error('Error checking enrollment:', error);
+    }
+  };
 
   const fetchStudentData = async () => {
     try {
@@ -127,6 +172,15 @@ const Enrollment = () => {
       return;
     }
 
+    // Check if enrollment already exists
+    if (existingEnrollment) {
+      setMessage({ 
+        type: 'error', 
+        text: `You already have an enrollment for ${schoolYear} - ${semester} semester. Status: ${existingEnrollment.status}` 
+      });
+      return;
+    }
+
     setLoading(true);
     setMessage({ type: '', text: '' });
 
@@ -142,7 +196,7 @@ const Enrollment = () => {
         semester,
         subjects,
         enrollmentType: 'Self',
-        status: 'Pending', // Request needs admin approval
+        paymentPlan,
       });
 
       setMessage({ 
@@ -151,9 +205,11 @@ const Enrollment = () => {
       });
       setSelectedOfferings({});
       
-      // Refresh the list
+      // Refresh the list and check enrollment
       fetchCurriculumSubjects();
+      checkExistingEnrollment();
     } catch (error) {
+      console.error('Enrollment error:', error);
       setMessage({
         type: 'error',
         text: error.response?.data?.message || 'Failed to submit request. Please try again.',
@@ -176,12 +232,17 @@ const Enrollment = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">School Year</label>
-            <input
-              type="text"
+            <select
               value={schoolYear}
               onChange={(e) => setSchoolYear(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-            />
+            >
+              {getSchoolYearOptions().map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
@@ -207,6 +268,16 @@ const Enrollment = () => {
           }`}
         >
           {message.text}
+        </div>
+      )}
+
+      {existingEnrollment && (
+        <div className="bg-yellow-50 text-yellow-800 border border-yellow-200 p-4 rounded-lg">
+          <p className="font-semibold">Enrollment Already Exists</p>
+          <p className="text-sm mt-1">
+            You have an existing enrollment for {schoolYear} - {semester} semester.
+            Status: <span className="font-medium">{existingEnrollment.status}</span>
+          </p>
         </div>
       )}
 
@@ -326,10 +397,10 @@ const Enrollment = () => {
           </div>
           <button
             onClick={handleRequestEnrollment}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+            disabled={loading || existingEnrollment}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
-            {loading ? 'Submitting Request...' : 'Submit Enrollment Request'}
+            {loading ? 'Submitting Request...' : existingEnrollment ? 'Already Enrolled' : 'Submit Enrollment Request'}
           </button>
         </div>
       )}

@@ -19,7 +19,7 @@ const MySubjects = () => {
   const fetchMySubjects = async () => {
     try {
       setLoading(true);
-      const response = await subjectsAPI.getSubjects({});
+      const response = await subjectsAPI.getSubjects({ limit: 1000 });
       const allSubjects = response.data.subjects || response.data;
       
       // Filter subjects where the logged-in instructor is assigned

@@ -19,7 +19,7 @@ const InstructorDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await subjectsAPI.getSubjects({});
+      const response = await subjectsAPI.getSubjects({ limit: 1000 });
       const allSubjects = response.data.subjects || response.data;
       
       // Filter subjects assigned to this instructor

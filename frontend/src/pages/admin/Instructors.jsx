@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { usersAPI } from '../../api';
+import { usersAPI, programsAPI } from '../../api';
 import { Users as UsersIcon, Plus, Edit2, Trash2, Search, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -37,14 +37,18 @@ const Instructors = () => {
 
   useEffect(() => {
     fetchInstructors();
+    fetchPrograms();
   }, [fetchInstructors]);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('programs');
-    if (stored) {
-      setPrograms(JSON.parse(stored));
+  const fetchPrograms = async () => {
+    try {
+      const response = await programsAPI.getPrograms({ limit: 1000 });
+      setPrograms(response.data.data || response.data || []);
+    } catch (error) {
+      console.error('Error fetching programs:', error);
+      toast.error('Failed to load programs');
     }
-  }, []);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();

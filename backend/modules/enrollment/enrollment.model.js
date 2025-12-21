@@ -42,6 +42,11 @@ const enrollmentSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    paymentPlan: {
+      type: String,
+      enum: ['Set A', 'Set B'],
+      default: 'Set A',
+    },
     status: {
       type: String,
       enum: ['Pending', 'Approved', 'Rejected', 'Completed'],

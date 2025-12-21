@@ -39,7 +39,7 @@ const Students = () => {
 
   const fetchPrograms = async () => {
     try {
-      const response = await programsAPI.getPrograms({});
+      const response = await programsAPI.getPrograms({ limit: 1000 });
       setPrograms(response.data.data || response.data || []);
     } catch (error) {
       console.error('Error fetching programs:', error);
@@ -59,7 +59,7 @@ const Students = () => {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const response = await studentsAPI.getStudents({});
+      const response = await studentsAPI.getStudents({ limit: 1000 });
       console.log('Students API Response:', response.data);
       const studentsData = response.data.students || response.data;
       console.log('Students Data:', studentsData);
