@@ -42,9 +42,11 @@ const Curriculum = () => {
         curriculumAPI.getCurricula({}),
       ]);
 
+      console.log('Curricula Response:', curriculaRes.data);
+      
       setPrograms(programsRes.data.data || programsRes.data || []);
       setSubjects(subjectsRes.data.subjects || subjectsRes.data || []);
-      setCurricula(curriculaRes.data.curricula || []);
+      setCurricula(curriculaRes.data.curricula || curriculaRes.data.data || curriculaRes.data || []);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
@@ -133,38 +135,46 @@ const Curriculum = () => {
     setEditingCurriculum(null);
   };
 
-  const addSubjectToForm = () => {
-    if (!currentSubject.subject) {
-      toast.error('Please select a subject');
-      return;
-    }
-
+  const addSubjectToForm = (subjectId, yearLevel, semester) => {
     // Check if subject already exists
-    if (formData.subjects.some(s => s.subject === currentSubject.subject)) {
-      toast.error('Subject already added');
+    if (formData.subjects.some(s => s.subject === subjectId && s.yearLevel === yearLevel && s.semester === semester)) {
+      toast.error('Subject already added for this year level and semester');
       return;
     }
 
     setFormData({
       ...formData,
-      subjects: [...formData.subjects, { ...currentSubject }],
-    });
-
-    // Reset current subject
-    setCurrentSubject({
-      subject: '',
-      yearLevel: currentSubject.yearLevel,
-      semester: currentSubject.semester,
-      isRequired: true,
-      prerequisites: [],
+      subjects: [...formData.subjects, {
+        subject: subjectId,
+        yearLevel,
+        semester,
+        isRequired: true,
+        prerequisites: [],
+      }],
     });
   };
 
-  const removeSubject = (index) => {
-    setFormData({
-      ...formData,
-      subjects: formData.subjects.filter((_, i) => i !== index),
-    });
+  const toggleSubject = (subjectId, yearLevel, semester) => {
+    const existingIndex = formData.subjects.findIndex(
+      s => s.subject === subjectId && s.yearLevel === yearLevel && s.semester === semester
+    );
+
+    if (existingIndex >= 0) {
+      // Remove subject
+      setFormData({
+        ...formData,
+        subjects: formData.subjects.filter((_, i) => i !== existingIndex),
+      });
+    } else {
+      // Add subject
+      addSubjectToForm(subjectId, yearLevel, semester);
+    }
+  };
+
+  const isSubjectSelected = (subjectId, yearLevel, semester) => {
+    return formData.subjects.some(
+      s => s.subject === subjectId && s.yearLevel === yearLevel && s.semester === semester
+    );
   };
 
   const getSubjectDetails = (subjectId) => {
@@ -413,29 +423,11 @@ const Curriculum = () => {
                 </div>
               </div>
 
-              {/* Add Subject Section */}
+              {/* Select Subjects (Backup-style checkbox list) */}
               <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Subjects</h3>
-                
-                <div className="grid grid-cols-4 gap-4 mb-4">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject
-                    </label>
-                    <select
-                      value={currentSubject.subject}
-                      onChange={(e) => setCurrentSubject({ ...currentSubject, subject: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="">Select Subject</option>
-                      {subjects.map((subject) => (
-                        <option key={subject._id} value={subject._id}>
-                          {subject.code} - {subject.name} ({subject.units} units)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Subjects</h3>
 
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Year Level
@@ -462,54 +454,83 @@ const Curriculum = () => {
                       onChange={(e) => setCurrentSubject({ ...currentSubject, semester: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="1st">1st</option>
-                      <option value="2nd">2nd</option>
+                      <option value="1st">1st Semester</option>
+                      <option value="2nd">2nd Semester</option>
                       <option value="Summer">Summer</option>
                     </select>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={addSubjectToForm}
-                  className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 text-sm font-medium"
-                >
-                  Add Subject
-                </button>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Subjects for {currentSubject.yearLevel} • {currentSubject.semester} Semester (Total: {getTotalUnits(
+                    formData.subjects.filter((s) => s.yearLevel === currentSubject.yearLevel && s.semester === currentSubject.semester)
+                  )} units)
+                </label>
+
+                <div className="border border-gray-300 rounded-lg p-4 max-h-64 overflow-y-auto space-y-2">
+                  {subjects.length === 0 ? (
+                    <p className="text-sm text-gray-500">No subjects available. Please create subjects first.</p>
+                  ) : (
+                    subjects.map((subject) => (
+                      <label
+                        key={subject._id}
+                        className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSubjectSelected(subject._id, currentSubject.yearLevel, currentSubject.semester)}
+                          onChange={() => toggleSubject(subject._id, currentSubject.yearLevel, currentSubject.semester)}
+                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        />
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-900">
+                            {subject.code} - {subject.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {subject.units} units{subject.program ? ` | ${subject.program}` : ''}{subject.yearLevel ? ` | ${subject.yearLevel}` : ''}
+                          </div>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
 
-              {/* Added Subjects List */}
+              {/* Summary of Added Subjects */}
               {formData.subjects.length > 0 && (
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Subjects in Curriculum ({formData.subjects.length})
+                    Selected Subjects ({formData.subjects.length}) - Total Units: {getTotalUnits(formData.subjects)}
                   </h3>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {formData.subjects.map((currSubject, index) => {
-                      const subject = getSubjectDetails(currSubject.subject);
-                      return subject ? (
-                        <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {subject.code} - {subject.name}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {currSubject.yearLevel} • {currSubject.semester} Semester • {subject.units} units
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeSubject(index)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'].map(yearLevel => {
+                      const yearSubjects = formData.subjects.filter(s => s.yearLevel === yearLevel);
+                      if (yearSubjects.length === 0) return null;
+
+                      return (
+                        <div key={yearLevel} className="border border-gray-200 rounded-lg p-3">
+                          <div className="font-medium text-gray-900 mb-2 text-sm">{yearLevel}</div>
+                          {['1st', '2nd', 'Summer'].map(semester => {
+                            const semesterSubjects = yearSubjects.filter(s => s.semester === semester);
+                            if (semesterSubjects.length === 0) return null;
+
+                            return (
+                              <div key={semester} className="mb-2">
+                                <div className="text-xs font-medium text-gray-600 mb-1">{semester} Semester</div>
+                                {semesterSubjects.map((currSubject, idx) => {
+                                  const subject = getSubjectDetails(currSubject.subject);
+                                  return subject ? (
+                                    <div key={idx} className="text-xs text-gray-700 ml-2">
+                                      • {subject.code} ({subject.units}u)
+                                    </div>
+                                  ) : null;
+                                })}
+                              </div>
+                            );
+                          })}
                         </div>
-                      ) : null;
+                      );
                     })}
-                  </div>
-                  <div className="mt-4 text-sm text-gray-600">
-                    Total Units: {getTotalUnits(formData.subjects)}
                   </div>
                 </div>
               )}
