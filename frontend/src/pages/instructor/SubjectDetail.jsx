@@ -7,7 +7,8 @@ import {
   FileText,
   Megaphone,
   Menu,
-  X
+  X,
+  Users
 } from 'lucide-react';
 
 const SubjectDetail = () => {
@@ -44,9 +45,32 @@ const SubjectDetail = () => {
       const response = await enrollmentsAPI.getEnrollments({ limit: 1000 });
       const allEnrollments = response.data.enrollments || response.data;
       
-      const relevantEnrollments = allEnrollments.filter(enrollment =>
-        enrollment.subjects?.some(subj => subj.offeringId === offeringId)
-      );
+      console.log('=== ENROLLMENT DEBUG ===');
+      console.log('Current offeringId from URL:', offeringId);
+      console.log('Total enrollments fetched:', allEnrollments.length);
+      console.log('Sample enrollment structure:', allEnrollments[0]);
+      
+      const relevantEnrollments = allEnrollments.filter(enrollment => {
+        // Only include approved enrollments
+        if (enrollment.status !== 'Approved') {
+          console.log('Skipping non-approved enrollment:', enrollment._id, 'Status:', enrollment.status);
+          return false;
+        }
+        
+        // Check if any subject in this enrollment matches the offering
+        const hasMatchingOffering = enrollment.subjects?.some(subj => {
+          const subjOfferingId = subj.offering?._id || subj.offering;
+          const matches = String(subjOfferingId) === String(offeringId);
+          console.log('Checking subject:', subj.subject?.code, 'Offering ID:', subjOfferingId, 'Matches:', matches);
+          return matches;
+        });
+        
+        return hasMatchingOffering;
+      });
+      
+      console.log('Filtered enrollments count:', relevantEnrollments.length);
+      console.log('Filtered enrollments:', relevantEnrollments);
+      console.log('=== END DEBUG ===');
       
       setEnrolledStudents(relevantEnrollments);
     } catch (error) {
@@ -95,6 +119,11 @@ const SubjectDetail = () => {
       label: 'Overview', 
       icon: BookOpen,
       exact: true 
+    },
+    { 
+      path: `/instructor/subjects/${subjectId}/offering/${offeringId}/students`, 
+      label: 'Students', 
+      icon: Users 
     },
     { 
       path: `/instructor/subjects/${subjectId}/offering/${offeringId}/announcements`, 

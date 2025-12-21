@@ -41,6 +41,7 @@ import InstructorDashboard from './pages/instructor/InstructorDashboard';
 import MySubjects from './pages/instructor/MySubjects';
 import SubjectDetail from './pages/instructor/SubjectDetail';
 import SubjectOverview from './pages/instructor/SubjectOverview';
+import SubjectStudents from './pages/instructor/SubjectStudents';
 import SubjectAnnouncements from './pages/instructor/SubjectAnnouncements';
 import SubjectMaterials from './pages/instructor/SubjectMaterials';
 
@@ -121,6 +122,7 @@ function App() {
             <Route path="subjects" element={<MySubjects />} />
             <Route path="subjects/:subjectId/offering/:offeringId" element={<SubjectDetail />}>
               <Route index element={<SubjectOverview />} />
+              <Route path="students" element={<SubjectStudents />} />
               <Route path="announcements" element={<SubjectAnnouncements />} />
               <Route path="materials" element={<SubjectMaterials />} />
             </Route>

@@ -55,8 +55,30 @@ export const getEnrollments = asyncHandler(async (req, res) => {
 
   const count = await Enrollment.countDocuments(query);
 
+  // Enrich enrollments with offering details
+  const enrichedEnrollments = await Promise.all(
+    enrollments.map(async (enrollment) => {
+      const enrichedSubjects = await Promise.all(
+        enrollment.subjects.map(async (subjectEntry) => {
+          const subjectDoc = await Subject.findById(subjectEntry.subject?._id);
+          const offering = subjectDoc?.offerings?.id(subjectEntry.offering);
+
+          return {
+            ...subjectEntry.toObject(),
+            offering: offering ? offering.toObject() : subjectEntry.offering,
+          };
+        })
+      );
+
+      return {
+        ...enrollment.toObject(),
+        subjects: enrichedSubjects,
+      };
+    })
+  );
+
   res.json({
-    enrollments,
+    enrollments: enrichedEnrollments,
     totalPages: Math.ceil(count / limit),
     currentPage: page,
     totalEnrollments: count,
