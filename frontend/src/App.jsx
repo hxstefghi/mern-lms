@@ -28,7 +28,7 @@ import Students from './pages/admin/Students';
 import Instructors from './pages/admin/Instructors';
 import Programs from './pages/admin/Programs';
 import Subjects from './pages/admin/Subjects';
-import Curriculum from './pages/admin/Curriculum_Backup';
+import Curriculum from './pages/admin/Curriculum';
 import SubjectOfferings from './pages/admin/SubjectOfferings';
 import Enrollments from './pages/admin/Enrollments';
 import Tuitions from './pages/admin/Tuitions';
