@@ -10,6 +10,12 @@ import {
   updateSubjectOffering,
   deleteSubjectOffering,
   getAvailableOfferings,
+  getOfferingAnnouncements,
+  createOfferingAnnouncement,
+  deleteOfferingAnnouncement,
+  getOfferingMaterials,
+  createOfferingMaterial,
+  deleteOfferingMaterial,
 } from './subjects.controller.js';
 import { protect, authorize } from '../../middleware/auth.middleware.js';
 
@@ -42,5 +48,25 @@ router
   .route('/:id/offerings/:offeringId')
   .put(authorize('admin'), updateSubjectOffering)
   .delete(authorize('admin'), deleteSubjectOffering);
+
+// Offering announcements
+router
+  .route('/:id/offerings/:offeringId/announcements')
+  .get(getOfferingAnnouncements)
+  .post(authorize('instructor', 'admin'), createOfferingAnnouncement);
+
+router
+  .route('/:id/offerings/:offeringId/announcements/:announcementId')
+  .delete(authorize('instructor', 'admin'), deleteOfferingAnnouncement);
+
+// Offering materials
+router
+  .route('/:id/offerings/:offeringId/materials')
+  .get(getOfferingMaterials)
+  .post(authorize('instructor', 'admin'), createOfferingMaterial);
+
+router
+  .route('/:id/offerings/:offeringId/materials/:materialId')
+  .delete(authorize('instructor', 'admin'), deleteOfferingMaterial);
 
 export default router;

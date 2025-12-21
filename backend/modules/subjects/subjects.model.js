@@ -1,24 +1,42 @@
 import mongoose from 'mongoose';
 
-const scheduleSchema = new mongoose.Schema({
-  day: {
-    type: String,
-    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-    required: true,
-  },
-  startTime: {
+const announcementSchema = new mongoose.Schema({
+  title: {
     type: String,
     required: true,
   },
-  endTime: {
+  content: {
     type: String,
     required: true,
   },
-  room: {
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+}, { timestamps: true });
+
+const materialSchema = new mongoose.Schema({
+  title: {
     type: String,
     required: true,
   },
-});
+  description: {
+    type: String,
+  },
+  type: {
+    type: String,
+    enum: ['link', 'video', 'file'],
+    default: 'link',
+  },
+  url: {
+    type: String,
+    required: true,
+  },
+  uploadDate: {
+    type: Date,
+    default: Date.now,
+  },
+}, { timestamps: true });
 
 const subjectOfferingSchema = new mongoose.Schema({
   schoolYear: {
@@ -34,7 +52,12 @@ const subjectOfferingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
-  schedule: [scheduleSchema],
+  schedule: {
+    type: mongoose.Schema.Types.Mixed, // Accept both string and array formats
+  },
+  room: {
+    type: String,
+  },
   capacity: {
     type: Number,
     default: 40,
@@ -47,6 +70,8 @@ const subjectOfferingSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  announcements: [announcementSchema],
+  materials: [materialSchema],
 });
 
 const subjectSchema = new mongoose.Schema(

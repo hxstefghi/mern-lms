@@ -113,7 +113,34 @@ export const getStudentEnrollments = asyncHandler(async (req, res) => {
     .populate('approvedBy', 'firstName lastName middleName')
     .sort({ schoolYear: -1, semester: -1 });
 
-  res.json(enrollments);
+  // Attach offering details so frontend can render schedule/instructor/room and build correct offeringId routes
+  const enrichedEnrollments = await Promise.all(
+    enrollments.map(async (enrollment) => {
+      const enrichedSubjects = await Promise.all(
+        enrollment.subjects.map(async (subjectEntry) => {
+          const subjectDoc = await Subject.findById(subjectEntry.subject?._id).populate(
+            'offerings.instructor',
+            'firstName lastName middleName email'
+          );
+
+          const offering = subjectDoc?.offerings?.id(subjectEntry.offering);
+
+          return {
+            ...subjectEntry.toObject(),
+            subject: subjectEntry.subject,
+            offering: offering ? offering.toObject() : null,
+          };
+        })
+      );
+
+      return {
+        ...enrollment.toObject(),
+        subjects: enrichedSubjects,
+      };
+    })
+  );
+
+  res.json(enrichedEnrollments);
 });
 
 // @desc    Create enrollment (Self or Admin)

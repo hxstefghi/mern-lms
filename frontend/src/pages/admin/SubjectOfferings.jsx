@@ -37,11 +37,26 @@ const SubjectOfferings = () => {
       const instructorsResponse = await usersAPI.getUsersByRole('instructor');
       setInstructors(instructorsResponse.data.users || instructorsResponse.data || []);
 
-      // Load offerings from localStorage
-      const storedOfferings = localStorage.getItem('subjectOfferings');
-      if (storedOfferings) {
-        setOfferings(JSON.parse(storedOfferings));
-      }
+      // Build offerings list from all subjects' offerings
+      const allOfferings = [];
+      subjectsData.forEach(subject => {
+        if (subject.offerings && subject.offerings.length > 0) {
+          subject.offerings.forEach(offering => {
+            allOfferings.push({
+              ...offering,
+              _id: offering._id,
+              subjectId: subject._id,
+              subjectCode: subject.code,
+              subjectName: subject.name,
+              subjectUnits: subject.units,
+              instructorName: offering.instructor 
+                ? `${offering.instructor.firstName} ${offering.instructor.lastName}`
+                : 'N/A',
+            });
+          });
+        }
+      });
+      setOfferings(allOfferings);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
@@ -50,55 +65,44 @@ const SubjectOfferings = () => {
     }
   };
 
-  const saveOfferings = (newOfferings) => {
-    localStorage.setItem('subjectOfferings', JSON.stringify(newOfferings));
-    setOfferings(newOfferings);
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const subject = subjects.find(s => s._id === formData.subjectId);
-      const instructor = instructors.find(i => i._id === formData.instructorId);
-
       if (editingOffering) {
-        const updated = offerings.map(o =>
-          o.id === editingOffering.id
-            ? {
-                ...o,
-                ...formData,
-                subjectCode: subject?.code,
-                subjectName: subject?.name,
-                subjectUnits: subject?.units,
-                instructorName: `${instructor?.firstName} ${instructor?.lastName}`,
-                capacity: parseInt(formData.capacity),
-                enrolled: o.enrolled || 0,
-              }
-            : o
+        // Update existing offering
+        await subjectsAPI.updateSubjectOffering(
+          formData.subjectId,
+          editingOffering._id,
+          {
+            instructor: formData.instructorId,
+            schedule: formData.schedule,
+            room: formData.room,
+            capacity: parseInt(formData.capacity),
+            isOpen: formData.isOpen,
+          }
         );
-        saveOfferings(updated);
         toast.success('Offering updated successfully!');
       } else {
-        const newOffering = {
-          id: Date.now(),
-          ...formData,
-          subjectCode: subject?.code,
-          subjectName: subject?.name,
-          subjectUnits: subject?.units,
-          instructorName: `${instructor?.firstName} ${instructor?.lastName}`,
+        // Create new offering
+        await subjectsAPI.addSubjectOffering(formData.subjectId, {
+          schoolYear: formData.schoolYear,
+          semester: formData.semester,
+          instructor: formData.instructorId,
+          schedule: formData.schedule,
+          room: formData.room,
           capacity: parseInt(formData.capacity),
-          enrolled: 0,
-          createdAt: new Date().toISOString(),
-        };
-        saveOfferings([...offerings, newOffering]);
+          isOpen: formData.isOpen,
+        });
         toast.success('Offering created successfully!');
       }
 
       setShowModal(false);
       resetForm();
+      loadData(); // Reload data
     } catch (error) {
-      toast.error('Failed to save offering');
+      console.error('Error saving offering:', error);
+      toast.error(error.response?.data?.message || 'Failed to save offering');
     }
   };
 
@@ -117,23 +121,32 @@ const SubjectOfferings = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (offeringId) => {
+  const handleDelete = async (offering) => {
     if (!window.confirm('Are you sure you want to delete this offering?')) return;
 
     try {
-      saveOfferings(offerings.filter(o => o.id !== offeringId));
+      await subjectsAPI.deleteSubjectOffering(offering.subjectId, offering._id);
       toast.success('Offering deleted successfully!');
+      loadData();
     } catch (error) {
+      console.error('Error deleting offering:', error);
       toast.error('Failed to delete offering');
     }
   };
 
-  const toggleStatus = (offeringId) => {
-    const updated = offerings.map(o =>
-      o.id === offeringId ? { ...o, isOpen: !o.isOpen } : o
-    );
-    saveOfferings(updated);
-    toast.success('Offering status updated!');
+  const toggleStatus = async (offering) => {
+    try {
+      await subjectsAPI.updateSubjectOffering(
+        offering.subjectId,
+        offering._id,
+        { isOpen: !offering.isOpen }
+      );
+      toast.success('Offering status updated!');
+      loadData();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    }
   };
 
   const resetForm = () => {
@@ -279,7 +292,7 @@ const SubjectOfferings = () => {
 
                 <div className="flex space-x-2 pt-4 border-t border-gray-100">
                   <button
-                    onClick={() => toggleStatus(offering.id)}
+                    onClick={() => toggleStatus(offering)}
                     className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                   >
                     {offering.isOpen ? 'Close' : 'Open'}
@@ -292,7 +305,7 @@ const SubjectOfferings = () => {
                     <span>Edit</span>
                   </button>
                   <button
-                    onClick={() => handleDelete(offering.id)}
+                    onClick={() => handleDelete(offering)}
                     className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -333,52 +346,21 @@ const SubjectOfferings = () => {
                   <select
                     required
                     value={formData.subjectId}
-                    onChange={(e) => setFormData({ ...formData, subjectId: e.target.value })}
+                    onChange={(e) => {
+                      const selectedSubject = subjects.find(s => s._id === e.target.value);
+                      setFormData({ 
+                        ...formData, 
+                        subjectId: e.target.value,
+                        semester: selectedSubject?.semester || '1st' // Auto-fill semester from subject
+                      });
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     <option value="">Select Subject</option>
                     {subjects.map((subject) => (
                       <option key={subject._id} value={subject._id}>
-                        {subject.code} - {subject.name}
+                        {subject.code} - {subject.name} ({subject.program})
                       </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Instructor *
-                  </label>
-                  <select
-                    required
-                    value={formData.instructorId}
-                    onChange={(e) => setFormData({ ...formData, instructorId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="">Select Instructor</option>
-                    {instructors.map((instructor) => (
-                      <option key={instructor._id} value={instructor._id}>
-                        {instructor.firstName} {instructor.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    School Year *
-                  </label>
-                  <select
-                    required
-                    value={formData.schoolYear}
-                    onChange={(e) => setFormData({ ...formData, schoolYear: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="">Select School Year</option>
-                    {schoolYears.map((year) => (
-                      <option key={year} value={year}>{year}</option>
                     ))}
                   </select>
                 </div>
@@ -396,7 +378,60 @@ const SubjectOfferings = () => {
                     <option value="2nd">2nd Semester</option>
                     <option value="Summer">Summer</option>
                   </select>
+                  {formData.subjectId && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Default: {subjects.find(s => s._id === formData.subjectId)?.semester}
+                    </p>
+                  )}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Instructor *
+                </label>
+                <select
+                  required
+                  value={formData.instructorId}
+                  onChange={(e) => setFormData({ ...formData, instructorId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  disabled={!formData.subjectId}
+                >
+                  <option value="">Select Instructor</option>
+                  {formData.subjectId && instructors
+                    .filter(instructor => {
+                      const selectedSubject = subjects.find(s => s._id === formData.subjectId);
+                      return instructor.assignedProgram === selectedSubject?.program;
+                    })
+                    .map((instructor) => (
+                      <option key={instructor._id} value={instructor._id}>
+                        {instructor.firstName} {instructor.lastName}
+                      </option>
+                    ))
+                  }
+                </select>
+                {formData.subjectId && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Showing instructors for {subjects.find(s => s._id === formData.subjectId)?.program}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  School Year *
+                </label>
+                <select
+                  required
+                  value={formData.schoolYear}
+                  onChange={(e) => setFormData({ ...formData, schoolYear: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">Select School Year</option>
+                  {schoolYears.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

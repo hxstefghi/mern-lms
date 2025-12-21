@@ -167,13 +167,8 @@ const RegistrationCard = () => {
                         {subject.instructor?.firstName} {subject.instructor?.lastName}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900">
-                        <div className="space-y-1">
-                          {subject.schedule?.map((sched, idx) => (
-                            <div key={idx}>
-                              {sched.day} {sched.startTime}-{sched.endTime}
-                            </div>
-                          ))}
-                        </div>
+                        {subject.schedule || 'N/A'}
+                        {subject.room && <div className="text-xs text-gray-500">Room: {subject.room}</div>}
                       </td>
                     </tr>
                   ))}

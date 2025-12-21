@@ -48,7 +48,7 @@ export const getRegistrationCard = asyncHandler(async (req, res) => {
   const registrationCard = {
     student: {
       studentNumber: enrollment.student.studentNumber,
-      name: enrollment.student.user.fullName,
+      name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
       program: enrollment.student.program,
       yearLevel: enrollment.student.yearLevel,
       email: enrollment.student.user.email,
@@ -124,7 +124,7 @@ export const getRegistrationCardByStudent = asyncHandler(async (req, res) => {
   const registrationCard = {
     student: {
       studentNumber: enrollment.student.studentNumber,
-      name: enrollment.student.user.fullName,
+      name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
       program: enrollment.student.program,
       yearLevel: enrollment.student.yearLevel,
       email: enrollment.student.user.email,

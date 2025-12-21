@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { enrollmentsAPI, studentsAPI, subjectsAPI } from '../../api';
+import { enrollmentsAPI, studentsAPI, subjectsAPI, curriculumAPI } from '../../api';
 import { ClipboardList, Plus, Check, X as XIcon, Search, Filter, Calendar, BookOpen, User, Zap } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -11,13 +11,22 @@ const Enrollments = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [showBlockedSectionModal, setShowBlockedSectionModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedStudents, setSelectedStudents] = useState([]);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [autoEnrollMode, setAutoEnrollMode] = useState(true);
   const [curriculumSubjects, setCurriculumSubjects] = useState([]);
   const [enrollmentData, setEnrollmentData] = useState({
     schoolYear: '',
     semester: '1st',
+  });
+  const [blockedSectionData, setBlockedSectionData] = useState({
+    schoolYear: '',
+    semester: '1st',
+    program: '',
+    yearLevel: '',
+    offerings: {}, // Map of subjectId to offeringId
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -95,6 +104,21 @@ const Enrollments = () => {
     }
   };
 
+  const handleComplete = async (enrollmentId) => {
+    if (!window.confirm('Are you sure you want to mark this enrollment as completed?')) return;
+
+    try {
+      await enrollmentsAPI.updateEnrollmentStatus(enrollmentId, {
+        status: 'Completed',
+      });
+      toast.success('Enrollment marked as completed');
+      fetchEnrollments();
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to complete enrollment';
+      toast.error(errorMsg);
+    }
+  };
+
   const handleStudentSelect = async (studentId) => {
     const student = students.find(s => s._id === studentId);
     setSelectedStudent(student);
@@ -117,55 +141,63 @@ const Enrollments = () => {
 
   const loadCurriculumSubjects = async (student, schoolYear, semester) => {
     try {
-      // Get curricula from localStorage
-      const storedCurricula = localStorage.getItem('curricula');
-      if (!storedCurricula) {
+      console.log('Loading curriculum for:', { program: student.program, yearLevel: student.yearLevel, semester });
+      
+      // Get curricula from API
+      const curriculaResponse = await curriculumAPI.getCurricula({});
+      const curricula = curriculaResponse.data.curricula || curriculaResponse.data.data || curriculaResponse.data || [];
+      
+      console.log('All curricula:', curricula);
+      
+      if (curricula.length === 0) {
         setError('No curricula found. Please create curriculum first.');
         setCurriculumSubjects([]);
         return;
       }
 
-      const curricula = JSON.parse(storedCurricula);
-      
-      // Find matching curriculum for student's program, year level, and semester
-      const programs = JSON.parse(localStorage.getItem('programs') || '[]');
-      const studentProgram = programs.find(p => p.name === student.program);
-      
+      // Find matching curriculum for student's program and status Active
       const matchingCurriculum = curricula.find(c => 
-        c.programId === studentProgram?.id &&
-        c.yearLevel === student.yearLevel &&
-        c.semester === semester
+        c.program === student.program &&
+        c.status === 'Active'
       );
 
+      console.log('Matching curriculum:', matchingCurriculum);
+
       if (!matchingCurriculum) {
-        setError(`No curriculum found for ${student.program} - ${student.yearLevel} - ${semester} Semester`);
+        setError(`No active curriculum found for ${student.program}`);
         setCurriculumSubjects([]);
         return;
       }
 
-      // Load subject offerings for curriculum subjects
-      const storedOfferings = localStorage.getItem('subjectOfferings');
-      if (!storedOfferings) {
-        setError('No subject offerings available');
+      // Filter curriculum subjects by year level and semester
+      const curriculumSubjectsForYearSemester = matchingCurriculum.subjects.filter(cs => 
+        cs.yearLevel === student.yearLevel &&
+        cs.semester === semester
+      );
+
+      console.log('Filtered curriculum subjects:', curriculumSubjectsForYearSemester);
+
+      if (curriculumSubjectsForYearSemester.length === 0) {
+        setError(`No subjects found in curriculum for ${student.yearLevel} - ${semester} Semester`);
         setCurriculumSubjects([]);
         return;
       }
 
-      const allOfferings = JSON.parse(storedOfferings);
-      
-      // Get all subjects from API
+      // Get all subjects from API to populate offerings
       const subjectsResponse = await subjectsAPI.getSubjects({});
       const allSubjects = subjectsResponse.data.subjects || subjectsResponse.data || [];
 
-      // Filter offerings that match curriculum subjects and current school year/semester
+      // Build subjects with their offerings that match school year and semester
       const matchingOfferings = [];
       
-      for (const subjectId of matchingCurriculum.subjects) {
+      for (const currSubject of curriculumSubjectsForYearSemester) {
+        const subjectId = currSubject.subject._id || currSubject.subject;
         const subject = allSubjects.find(s => s._id === subjectId);
+        
         if (!subject) continue;
 
-        const offerings = allOfferings.filter(o => 
-          o.subjectId === subjectId &&
+        // Filter offerings for this subject
+        const offerings = (subject.offerings || []).filter(o => 
           o.schoolYear === schoolYear &&
           o.semester === semester &&
           o.isOpen === true &&
@@ -180,17 +212,19 @@ const Enrollments = () => {
         }
       }
 
+      console.log('Matching offerings:', matchingOfferings);
+
       setCurriculumSubjects(matchingOfferings);
       
-      // Auto-select all available curriculum offerings
+      // Auto-select first offering of each subject
       const autoSelectedOfferings = matchingOfferings
-        .flatMap(s => s.offerings)
-        .map(o => o.id);
+        .filter(s => s.offerings && s.offerings.length > 0)
+        .map(s => s.offerings[0]._id);
       
       setSelectedSubjects(autoSelectedOfferings);
 
       if (matchingOfferings.length === 0) {
-        setError('No available offerings for curriculum subjects. Please create offerings first.');
+        setError('No available offerings for curriculum subjects. Please create subject offerings first.');
       } else {
         toast.success(`Auto-loaded ${matchingOfferings.length} curriculum subjects`);
       }
@@ -251,6 +285,7 @@ const Enrollments = () => {
         semester: enrollmentData.semester,
         subjects: subjectsPayload,
         enrollmentType: autoEnrollMode ? 'Auto-Curriculum' : 'Admin-Manual',
+        status: 'Approved', // Auto-approve admin enrollments
       };
 
       await enrollmentsAPI.createEnrollment(payload);
@@ -309,6 +344,84 @@ const Enrollments = () => {
     }
   };
 
+  // Blocked Section Enrollment
+  const handleBlockedSectionEnroll = async () => {
+    if (selectedStudents.length === 0) {
+      setError('Please select at least one student');
+      return;
+    }
+
+    if (Object.keys(blockedSectionData.offerings).length === 0) {
+      setError('Please select at least one subject offering');
+      return;
+    }
+
+    try {
+      // Create enrollments for all selected students with the same offerings
+      const enrollmentPromises = selectedStudents.map(studentId => {
+        const subjects = Object.entries(blockedSectionData.offerings).map(([subjectId, offeringId]) => ({
+          subjectId,
+          offeringId,
+        }));
+
+        return enrollmentsAPI.createEnrollment({
+          studentId,
+          schoolYear: blockedSectionData.schoolYear,
+          semester: blockedSectionData.semester,
+          subjects,
+          enrollmentType: 'Blocked-Section',
+          status: 'Approved', // Auto-approve admin enrollments
+        });
+      });
+
+      await Promise.all(enrollmentPromises);
+      toast.success(`Successfully enrolled ${selectedStudents.length} students in blocked section`);
+      setShowBlockedSectionModal(false);
+      resetBlockedSectionForm();
+      fetchEnrollments();
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to enroll blocked section';
+      setError(errorMsg);
+      toast.error(errorMsg);
+    }
+  };
+
+  const resetBlockedSectionForm = () => {
+    setSelectedStudents([]);
+    setBlockedSectionData({
+      schoolYear: '',
+      semester: '1st',
+      program: '',
+      yearLevel: '',
+      offerings: {},
+    });
+    setSubjects([]);
+    setError('');
+  };
+
+  const toggleStudentSelection = (studentId) => {
+    setSelectedStudents(prev =>
+      prev.includes(studentId)
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const handleOfferingSelection = (subjectId, offeringId) => {
+    setBlockedSectionData(prev => ({
+      ...prev,
+      offerings: {
+        ...prev.offerings,
+        [subjectId]: offeringId,
+      },
+    }));
+  };
+
+  const filteredStudentsForBlocked = students.filter(student =>
+    student.program === blockedSectionData.program &&
+    student.yearLevel === blockedSectionData.yearLevel
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -317,13 +430,22 @@ const Enrollments = () => {
           <h1 className="text-2xl font-semibold text-gray-900">Enrollments Management</h1>
           <p className="text-sm text-gray-600 mt-1">Review and manage student enrollments</p>
         </div>
-        <button
-          onClick={() => setShowEnrollModal(true)}
-          className="flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Enroll Student</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowBlockedSectionModal(true)}
+            className="flex items-center space-x-2 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+          >
+            <Zap className="w-4 h-4" />
+            <span>Blocked Section</span>
+          </button>
+          <button
+            onClick={() => setShowEnrollModal(true)}
+            className="flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Enroll Student</span>
+          </button>
+        </div>
       </div>
 
       {/* Alerts */}
@@ -448,7 +570,9 @@ const Enrollments = () => {
                           ? 'bg-yellow-100 text-yellow-800'
                           : enrollment.status === 'Rejected'
                           ? 'bg-red-100 text-red-800'
-                          : 'bg-blue-100 text-blue-800'
+                          : enrollment.status === 'Completed'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
                       }`}
                     >
                       {enrollment.status}
@@ -471,6 +595,16 @@ const Enrollments = () => {
                           <span>Reject</span>
                         </button>
                       </div>
+                    )}
+
+                    {enrollment.status === 'Approved' && (
+                      <button
+                        onClick={() => handleComplete(enrollment._id)}
+                        className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Mark Complete</span>
+                      </button>
                     )}
 
                     <div className="text-xs text-gray-500">
@@ -699,13 +833,10 @@ const Enrollments = () => {
                                         )}
                                         <span>• Slots: {offering.enrolled}/{offering.capacity}</span>
                                       </div>
-                                      {offering.schedule && offering.schedule.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 mt-2">
-                                          {offering.schedule.map((sched, idx) => (
-                                            <span key={idx} className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                                              {sched.day} {sched.startTime}-{sched.endTime}
-                                            </span>
-                                          ))}
+                                      {offering.schedule && (
+                                        <div className="text-xs bg-gray-100 px-2 py-1 rounded mt-2 inline-block">
+                                          {offering.schedule}
+                                          {offering.room && <span> • Room {offering.room}</span>}
                                         </div>
                                       )}
                                     </div>
@@ -742,6 +873,208 @@ const Enrollments = () => {
                 </>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Blocked Section Modal */}
+      {showBlockedSectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-5xl w-full p-6 my-8">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Blocked Section Enrollment</h2>
+                <p className="text-sm text-gray-600 mt-1">Enroll multiple students in the same sections</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowBlockedSectionModal(false);
+                  resetBlockedSectionForm();
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Period and Program Selection */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    School Year *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., 2024-2025"
+                    value={blockedSectionData.schoolYear}
+                    onChange={(e) => setBlockedSectionData({ ...blockedSectionData, schoolYear: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Semester *
+                  </label>
+                  <select
+                    value={blockedSectionData.semester}
+                    onChange={(e) => setBlockedSectionData({ ...blockedSectionData, semester: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="1st">1st Semester</option>
+                    <option value="2nd">2nd Semester</option>
+                    <option value="Summer">Summer</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Program *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., BSCS, BSIT"
+                    value={blockedSectionData.program}
+                    onChange={async (e) => {
+                      const newProgram = e.target.value;
+                      setBlockedSectionData({ ...blockedSectionData, program: newProgram });
+                      if (newProgram && blockedSectionData.yearLevel && blockedSectionData.schoolYear) {
+                        await fetchAvailableSubjects(newProgram, blockedSectionData.yearLevel, blockedSectionData.schoolYear, blockedSectionData.semester);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Year Level *
+                  </label>
+                  <select
+                    value={blockedSectionData.yearLevel}
+                    onChange={async (e) => {
+                      const newYearLevel = e.target.value;
+                      setBlockedSectionData({ ...blockedSectionData, yearLevel: newYearLevel });
+                      if (blockedSectionData.program && newYearLevel && blockedSectionData.schoolYear) {
+                        await fetchAvailableSubjects(blockedSectionData.program, newYearLevel, blockedSectionData.schoolYear, blockedSectionData.semester);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Select Year Level</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Select Students */}
+              {blockedSectionData.program && blockedSectionData.yearLevel && (
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Select Students ({selectedStudents.length} selected)
+                  </h3>
+                  <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-4 space-y-2">
+                    {filteredStudentsForBlocked.length === 0 ? (
+                      <p className="text-sm text-gray-500">No students found for this program and year level</p>
+                    ) : (
+                      filteredStudentsForBlocked.map(student => (
+                        <label key={student._id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedStudents.includes(student._id)}
+                            onChange={() => toggleStudentSelection(student._id)}
+                            className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                          />
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900">
+                              {student.user?.firstName} {student.user?.lastName}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {student.studentNumber} • {student.program} • {student.yearLevel}
+                            </div>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Select Offerings */}
+              {selectedStudents.length > 0 && subjects.length > 0 && (
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Select Subject Offerings
+                  </h3>
+                  <div className="space-y-4">
+                    {subjects.map(subject => (
+                      <div key={subject._id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="mb-3">
+                          <h4 className="font-semibold text-gray-900">{subject.code} - {subject.name}</h4>
+                          <p className="text-sm text-gray-600">{subject.units} units</p>
+                        </div>
+                        <div className="space-y-2">
+                          {subject.offerings?.map(offering => (
+                            <label key={offering._id} className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`offering-${subject._id}`}
+                                checked={blockedSectionData.offerings[subject._id] === offering._id}
+                                onChange={() => handleOfferingSelection(subject._id, offering._id)}
+                                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                              />
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">
+                                  {offering.instructor?.firstName} {offering.instructor?.lastName}
+                                </div>
+                                <div className="text-sm text-gray-600 mt-1">
+                                  {offering.schedule && (
+                                    <span>
+                                      {offering.schedule}
+                                      {offering.room && <span> • Room {offering.room}</span>}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {offering.enrolled}/{offering.capacity} enrolled
+                                </div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex space-x-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={handleBlockedSectionEnroll}
+                  disabled={selectedStudents.length === 0 || Object.keys(blockedSectionData.offerings).length === 0}
+                  className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Enroll {selectedStudents.length} Students
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBlockedSectionModal(false);
+                    resetBlockedSectionForm();
+                  }}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

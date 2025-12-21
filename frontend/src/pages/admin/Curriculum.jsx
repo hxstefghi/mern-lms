@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, X, BookCheck, Calendar } from 'lucide-react';
-import { subjectsAPI } from '../../api';
+import { Plus, Edit2, Trash2, Search, X, BookCheck, Calendar, GraduationCap } from 'lucide-react';
+import { subjectsAPI, programsAPI, curriculumAPI } from '../../api';
 import { toast } from 'react-toastify';
 
 const Curriculum = () => {
@@ -11,12 +11,23 @@ const Curriculum = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingCurriculum, setEditingCurriculum] = useState(null);
+  
+  // Simple form for adding subjects to curriculum
   const [formData, setFormData] = useState({
-    programId: '',
-    version: '',
+    program: '',
+    effectiveYear: '',
+    description: '',
+    status: 'Active',
+    subjects: [],
+  });
+
+  // Current subject being added
+  const [currentSubject, setCurrentSubject] = useState({
+    subject: '',
     yearLevel: '1st Year',
     semester: '1st',
-    subjects: [],
+    isRequired: true,
+    prerequisites: [],
   });
 
   useEffect(() => {
@@ -25,21 +36,17 @@ const Curriculum = () => {
 
   const loadData = async () => {
     try {
-      // Load programs from localStorage
-      const storedPrograms = localStorage.getItem('programs');
-      if (storedPrograms) {
-        setPrograms(JSON.parse(storedPrograms));
-      }
+      const [programsRes, subjectsRes, curriculaRes] = await Promise.all([
+        programsAPI.getPrograms({}),
+        subjectsAPI.getSubjects({}),
+        curriculumAPI.getCurricula({}),
+      ]);
 
-      // Load subjects from API
-      const response = await subjectsAPI.getSubjects({});
-      setSubjects(response.data.subjects || response.data || []);
-
-      // Load curricula from localStorage
-      const storedCurricula = localStorage.getItem('curricula');
-      if (storedCurricula) {
-        setCurricula(JSON.parse(storedCurricula));
-      }
+      console.log('Curricula Response:', curriculaRes.data);
+      
+      setPrograms(programsRes.data.data || programsRes.data || []);
+      setSubjects(subjectsRes.data.subjects || subjectsRes.data || []);
+      setCurricula(curriculaRes.data.curricula || curriculaRes.data.data || curriculaRes.data || []);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
@@ -48,113 +55,155 @@ const Curriculum = () => {
     }
   };
 
-  const saveCurricula = (newCurricula) => {
-    localStorage.setItem('curricula', JSON.stringify(newCurricula));
-    setCurricula(newCurricula);
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (formData.subjects.length === 0) {
-      toast.error('Please select at least one subject');
+      toast.error('Please add at least one subject');
+      return;
+    }
+
+    if (!formData.program) {
+      toast.error('Please select a program');
       return;
     }
 
     try {
-      const program = programs.find(p => p.id === parseInt(formData.programId));
-      
       if (editingCurriculum) {
-        const updated = curricula.map(c => 
-          c.id === editingCurriculum.id 
-            ? { 
-                ...c, 
-                ...formData,
-                programName: program?.name,
-                programCode: program?.code,
-                totalUnits: calculateTotalUnits(formData.subjects)
-              }
-            : c
-        );
-        saveCurricula(updated);
+        await curriculumAPI.updateCurriculum(editingCurriculum._id, formData);
         toast.success('Curriculum updated successfully!');
       } else {
-        const newCurriculum = {
-          id: Date.now(),
-          ...formData,
-          programName: program?.name,
-          programCode: program?.code,
-          totalUnits: calculateTotalUnits(formData.subjects),
-          createdAt: new Date().toISOString(),
-        };
-        saveCurricula([...curricula, newCurriculum]);
+        await curriculumAPI.createCurriculum(formData);
         toast.success('Curriculum created successfully!');
       }
       
+      await loadData();
       setShowModal(false);
       resetForm();
     } catch (error) {
-      toast.error('Failed to save curriculum');
+      console.error('Error saving curriculum:', error);
+      toast.error(error.response?.data?.message || 'Failed to save curriculum');
     }
-  };
-
-  const calculateTotalUnits = (selectedSubjects) => {
-    return selectedSubjects.reduce((total, subjectId) => {
-      const subject = subjects.find(s => s._id === subjectId);
-      return total + (subject?.units || 0);
-    }, 0);
   };
 
   const handleEdit = (curriculum) => {
     setEditingCurriculum(curriculum);
     setFormData({
-      programId: curriculum.programId,
-      version: curriculum.version,
-      yearLevel: curriculum.yearLevel,
-      semester: curriculum.semester,
-      subjects: curriculum.subjects,
+      program: curriculum.program,
+      effectiveYear: curriculum.effectiveYear,
+      description: curriculum.description || '',
+      status: curriculum.status || 'Active',
+      subjects: curriculum.subjects.map(s => ({
+        subject: s.subject._id || s.subject,
+        yearLevel: s.yearLevel,
+        semester: s.semester,
+        isRequired: s.isRequired !== false,
+        prerequisites: s.prerequisites?.map(p => p._id || p) || [],
+      })),
     });
     setShowModal(true);
   };
 
-  const handleDelete = (curriculumId) => {
+  const handleDelete = async (curriculumId) => {
     if (!window.confirm('Are you sure you want to delete this curriculum?')) return;
 
     try {
-      saveCurricula(curricula.filter(c => c.id !== curriculumId));
+      await curriculumAPI.deleteCurriculum(curriculumId);
+      await loadData();
       toast.success('Curriculum deleted successfully!');
     } catch (error) {
+      console.error('Error deleting curriculum:', error);
       toast.error('Failed to delete curriculum');
     }
   };
 
   const resetForm = () => {
     setFormData({
-      programId: '',
-      version: '',
+      program: '',
+      effectiveYear: '',
+      description: '',
+      status: 'Active',
+      subjects: [],
+    });
+    setCurrentSubject({
+      subject: '',
       yearLevel: '1st Year',
       semester: '1st',
-      subjects: [],
+      isRequired: true,
+      prerequisites: [],
     });
     setEditingCurriculum(null);
   };
 
-  const toggleSubject = (subjectId) => {
-    if (formData.subjects.includes(subjectId)) {
-      setFormData({ ...formData, subjects: formData.subjects.filter(id => id !== subjectId) });
+  const addSubjectToForm = (subjectId, yearLevel, semester) => {
+    // Check if subject already exists
+    if (formData.subjects.some(s => s.subject === subjectId && s.yearLevel === yearLevel && s.semester === semester)) {
+      toast.error('Subject already added for this year level and semester');
+      return;
+    }
+
+    setFormData({
+      ...formData,
+      subjects: [...formData.subjects, {
+        subject: subjectId,
+        yearLevel,
+        semester,
+        isRequired: true,
+        prerequisites: [],
+      }],
+    });
+  };
+
+  const toggleSubject = (subjectId, yearLevel, semester) => {
+    const existingIndex = formData.subjects.findIndex(
+      s => s.subject === subjectId && s.yearLevel === yearLevel && s.semester === semester
+    );
+
+    if (existingIndex >= 0) {
+      // Remove subject
+      setFormData({
+        ...formData,
+        subjects: formData.subjects.filter((_, i) => i !== existingIndex),
+      });
     } else {
-      setFormData({ ...formData, subjects: [...formData.subjects, subjectId] });
+      // Add subject
+      addSubjectToForm(subjectId, yearLevel, semester);
     }
   };
 
-  const filteredCurricula = curricula.filter(curriculum =>
-    curriculum.programName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    curriculum.version?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const isSubjectSelected = (subjectId, yearLevel, semester) => {
+    return formData.subjects.some(
+      s => s.subject === subjectId && s.yearLevel === yearLevel && s.semester === semester
+    );
+  };
+
+  const removeSubject = (index) => {
+    setFormData({
+      ...formData,
+      subjects: formData.subjects.filter((_, i) => i !== index),
+    });
+  };
 
   const getSubjectDetails = (subjectId) => {
     return subjects.find(s => s._id === subjectId);
   };
+
+  const getTotalUnits = (curriculumSubjects) => {
+    return curriculumSubjects.reduce((total, currSubject) => {
+      const subject = subjects.find(s => s._id === (currSubject.subject?._id || currSubject.subject));
+      return total + (subject?.units || 0);
+    }, 0);
+  };
+
+  const getProgramName = (programCode) => {
+    const program = programs.find(p => p.code === programCode);
+    return program?.name || programCode;
+  };
+
+  const filteredCurricula = curricula.filter(curriculum =>
+    curriculum.program?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    curriculum.effectiveYear?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -162,7 +211,7 @@ const Curriculum = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Curriculum Management</h1>
-          <p className="text-sm text-gray-600 mt-1">Define subjects per program, year level, and semester</p>
+          <p className="text-sm text-gray-600 mt-1">Define curriculum structure for each program</p>
         </div>
         <button
           onClick={() => {
@@ -172,7 +221,7 @@ const Curriculum = () => {
           className="flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Curriculum</span>
+          <span>Create Curriculum</span>
         </button>
       </div>
 
@@ -182,7 +231,7 @@ const Curriculum = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search curricula..."
+            placeholder="Search curricula by program or year..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -204,78 +253,104 @@ const Curriculum = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {filteredCurricula.map((curriculum) => (
-            <div key={curriculum.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium text-indigo-600">
-                    {curriculum.programCode} - {curriculum.version}
+            <div key={curriculum._id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      {curriculum.program} - {getProgramName(curriculum.program)}
+                    </h3>
+                    <span className={`px-3 py-1 text-xs rounded-full font-medium ${
+                      curriculum.status === 'Active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {curriculum.status}
+                    </span>
                   </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
-                    {curriculum.totalUnits} Units
-                  </span>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 mr-1" />
+                      Effective Year: {curriculum.effectiveYear}
+                    </div>
+                    <div className="flex items-center">
+                      <BookCheck className="w-4 h-4 mr-1" />
+                      {curriculum.subjects.length} Subjects
+                    </div>
+                    <div className="flex items-center">
+                      <GraduationCap className="w-4 h-4 mr-1" />
+                      {getTotalUnits(curriculum.subjects)} Total Units
+                    </div>
+                  </div>
+                  {curriculum.description && (
+                    <p className="text-sm text-gray-600 mt-2">{curriculum.description}</p>
+                  )}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                  {curriculum.programName}
-                </h3>
-                <div className="flex items-center space-x-4 text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-1" />
-                    {curriculum.yearLevel}
-                  </div>
-                  <div className="flex items-center">
-                    <BookCheck className="w-4 h-4 mr-1" />
-                    {curriculum.semester} Semester
-                  </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleEdit(curriculum)}
+                    className="px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(curriculum._id)}
+                    className="px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              <div className="mb-4">
-                <div className="text-sm font-medium text-gray-700 mb-2">
-                  Subjects ({curriculum.subjects.length}):
-                </div>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {curriculum.subjects.map((subjectId) => {
-                    const subject = getSubjectDetails(subjectId);
-                    return subject ? (
-                      <div key={subjectId} className="text-sm text-gray-600 flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
-                        <span>{subject.code} - {subject.name}</span>
-                        <span className="text-xs text-gray-500">{subject.units} units</span>
+              {/* Subjects by Year and Semester */}
+              <div className="space-y-4">
+                {['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'].map(yearLevel => {
+                  const yearSubjects = curriculum.subjects.filter(s => s.yearLevel === yearLevel);
+                  if (yearSubjects.length === 0) return null;
+
+                  return (
+                    <div key={yearLevel} className="border-t pt-4">
+                      <h4 className="font-semibold text-gray-900 mb-3">{yearLevel}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {['1st', '2nd', 'Summer'].map(semester => {
+                          const semesterSubjects = yearSubjects.filter(s => s.semester === semester);
+                          if (semesterSubjects.length === 0) return null;
+
+                          return (
+                            <div key={semester} className="space-y-2">
+                              <div className="text-sm font-medium text-gray-700">{semester} Semester</div>
+                              {semesterSubjects.map((currSubject, idx) => {
+                                const subject = getSubjectDetails(currSubject.subject?._id || currSubject.subject);
+                                return subject ? (
+                                  <div key={idx} className="text-sm bg-gray-50 p-2 rounded">
+                                    <div className="font-medium text-gray-900">{subject.code}</div>
+                                    <div className="text-gray-600">{subject.name}</div>
+                                    <div className="text-xs text-gray-500 mt-1">{subject.units} units</div>
+                                  </div>
+                                ) : null;
+                              })}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ) : null;
-                  })}
-                </div>
-              </div>
-
-              <div className="flex space-x-2 pt-4 border-t border-gray-100">
-                <button
-                  onClick={() => handleEdit(curriculum)}
-                  className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  <span>Edit</span>
-                </button>
-                <button
-                  onClick={() => handleDelete(curriculum.id)}
-                  className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete</span>
-                </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modal */}
+      {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-3xl w-full p-6 my-8">
-            <div className="flex justify-between items-center mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-4xl w-full p-6 my-8">
+            <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-900">
-                {editingCurriculum ? 'Edit Curriculum' : 'Add New Curriculum'}
+                {editingCurriculum ? 'Edit Curriculum' : 'Create New Curriculum'}
               </h2>
               <button
                 onClick={() => {
@@ -288,21 +363,22 @@ const Curriculum = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Basic Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Program *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Program Code *
                   </label>
                   <select
                     required
-                    value={formData.programId}
-                    onChange={(e) => setFormData({ ...formData, programId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    value={formData.program}
+                    onChange={(e) => setFormData({ ...formData, program: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Select Program</option>
                     {programs.map((program) => (
-                      <option key={program.id} value={program.id}>
+                      <option key={program._id} value={program.code}>
                         {program.code} - {program.name}
                       </option>
                     ))}
@@ -310,89 +386,156 @@ const Curriculum = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Version *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Effective Year *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g., 2022, 2023"
-                    value={formData.version}
-                    onChange={(e) => setFormData({ ...formData, version: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., 2024-2025"
+                    value={formData.effectiveYear}
+                    onChange={(e) => setFormData({ ...formData, effectiveYear: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Year Level *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
                   </label>
                   <select
-                    value={formData.yearLevel}
-                    onChange={(e) => setFormData({ ...formData, yearLevel: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="1st Year">1st Year</option>
-                    <option value="2nd Year">2nd Year</option>
-                    <option value="3rd Year">3rd Year</option>
-                    <option value="4th Year">4th Year</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Archived">Archived</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Semester *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
                   </label>
-                  <select
-                    value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="1st">1st Semester</option>
-                    <option value="2nd">2nd Semester</option>
-                    <option value="Summer">Summer</option>
-                  </select>
+                  <input
+                    type="text"
+                    placeholder="Optional description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Subjects * (Total: {calculateTotalUnits(formData.subjects)} units)
-                </label>
-                <div className="border border-gray-300 rounded-lg p-4 max-h-64 overflow-y-auto space-y-2">
-                  {subjects.length === 0 ? (
-                    <p className="text-sm text-gray-500">No subjects available. Please create subjects first.</p>
-                  ) : (
-                    subjects.map((subject) => (
-                      <label key={subject._id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.subjects.includes(subject._id)}
-                          onChange={() => toggleSubject(subject._id)}
-                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                        />
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">
-                            {subject.code} - {subject.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {subject.units} units | {subject.program} | {subject.yearLevel}
-                          </div>
+              {/* Add Subject Section with Table */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Subjects by Year Level and Semester</h3>
+                
+                {subjects.length === 0 ? (
+                  <p className="text-sm text-gray-500">No subjects available. Please create subjects first.</p>
+                ) : (
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="w-full border-collapse text-sm">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-2 px-3 font-semibold text-gray-700 sticky left-0 bg-gray-50 z-10 border-r border-gray-200" style={{minWidth: '180px'}}>Subject</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>1Y-1S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>1Y-2S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-200" style={{minWidth: '50px'}}>1Y-Su</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>2Y-1S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>2Y-2S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-200" style={{minWidth: '50px'}}>2Y-Su</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>3Y-1S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>3Y-2S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-200" style={{minWidth: '50px'}}>3Y-Su</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>4Y-1S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>4Y-2S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-200" style={{minWidth: '50px'}}>4Y-Su</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>5Y-1S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700 border-r border-gray-100" style={{minWidth: '50px'}}>5Y-2S</th>
+                          <th className="text-center py-2 px-2 font-medium text-xs text-gray-700" style={{minWidth: '50px'}}>5Y-Su</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subjects.map((subject, idx) => (
+                          <tr key={subject._id} className={`border-b border-gray-100 hover:bg-blue-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                            <td className="py-2 px-3 sticky left-0 z-10 border-r border-gray-200" style={{background: idx % 2 === 0 ? 'white' : '#f9fafb'}}>
+                              <div className="font-medium text-gray-900 text-xs">{subject.code}</div>
+                              <div className="text-xs text-gray-600 truncate max-w-[160px]" title={subject.name}>{subject.name}</div>
+                              <div className="text-xs text-gray-400">{subject.units}u</div>
+                            </td>
+                            {['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'].map((yearLevel) =>
+                              ['1st', '2nd', 'Summer'].map((semester, sIdx) => (
+                                <td key={`${yearLevel}-${semester}`} className={`text-center py-2 px-2 ${sIdx === 2 ? 'border-r border-gray-200' : 'border-r border-gray-100'}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isSubjectSelected(subject._id, yearLevel, semester)}
+                                    onChange={() => toggleSubject(subject._id, yearLevel, semester)}
+                                    className="w-4 h-4 text-indigo-600 focus:ring-2 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                                  />
+                                </td>
+                              ))
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="mt-2 text-xs text-gray-500">
+                  <strong>Legend:</strong> 1Y = 1st Year, 2Y = 2nd Year, etc. | 1S = 1st Semester, 2S = 2nd Semester, Su = Summer
+                </div>
+              </div>
+
+              {/* Summary of Added Subjects */}
+              {formData.subjects.length > 0 && (
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Selected Subjects ({formData.subjects.length}) - Total Units: {getTotalUnits(formData.subjects)}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'].map(yearLevel => {
+                      const yearSubjects = formData.subjects.filter(s => s.yearLevel === yearLevel);
+                      if (yearSubjects.length === 0) return null;
+
+                      return (
+                        <div key={yearLevel} className="border border-gray-200 rounded-lg p-3">
+                          <div className="font-medium text-gray-900 mb-2 text-sm">{yearLevel}</div>
+                          {['1st', '2nd', 'Summer'].map(semester => {
+                            const semesterSubjects = yearSubjects.filter(s => s.semester === semester);
+                            if (semesterSubjects.length === 0) return null;
+
+                            return (
+                              <div key={semester} className="mb-2">
+                                <div className="text-xs font-medium text-gray-600 mb-1">{semester} Semester</div>
+                                {semesterSubjects.map((currSubject, idx) => {
+                                  const subject = getSubjectDetails(currSubject.subject);
+                                  return subject ? (
+                                    <div key={idx} className="text-xs text-gray-700 ml-2">
+                                      • {subject.code} ({subject.units}u)
+                                    </div>
+                                  ) : null;
+                                })}
+                              </div>
+                            );
+                          })}
                         </div>
-                      </label>
-                    ))
-                  )}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="flex space-x-3 pt-4">
+              {/* Submit Buttons */}
+              <div className="flex space-x-3 pt-4 border-t">
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
                 >
-                  {editingCurriculum ? 'Update' : 'Create'}
+                  {editingCurriculum ? 'Update Curriculum' : 'Create Curriculum'}
                 </button>
                 <button
                   type="button"
@@ -400,7 +543,7 @@ const Curriculum = () => {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
                 >
                   Cancel
                 </button>

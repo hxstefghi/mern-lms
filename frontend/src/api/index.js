@@ -44,6 +44,21 @@ export const subjectsAPI = {
     api.put(`/subjects/${id}/offerings/${offeringId}`, offeringData),
   deleteSubjectOffering: (id, offeringId) => api.delete(`/subjects/${id}/offerings/${offeringId}`),
   getAvailableOfferings: (params) => api.get('/subjects/offerings/available', { params }),
+
+  // Offering announcements/materials
+  getOfferingAnnouncements: (subjectId, offeringId) =>
+    api.get(`/subjects/${subjectId}/offerings/${offeringId}/announcements`),
+  postOfferingAnnouncement: (subjectId, offeringId, data) =>
+    api.post(`/subjects/${subjectId}/offerings/${offeringId}/announcements`, data),
+  deleteOfferingAnnouncement: (subjectId, offeringId, announcementId) =>
+    api.delete(`/subjects/${subjectId}/offerings/${offeringId}/announcements/${announcementId}`),
+
+  getOfferingMaterials: (subjectId, offeringId) =>
+    api.get(`/subjects/${subjectId}/offerings/${offeringId}/materials`),
+  postOfferingMaterial: (subjectId, offeringId, data) =>
+    api.post(`/subjects/${subjectId}/offerings/${offeringId}/materials`, data),
+  deleteOfferingMaterial: (subjectId, offeringId, materialId) =>
+    api.delete(`/subjects/${subjectId}/offerings/${offeringId}/materials/${materialId}`),
 };
 
 // Enrollments API
@@ -74,4 +89,25 @@ export const tuitionAPI = {
   addPayment: (id, paymentData) => api.post(`/tuitions/${id}/payments`, paymentData),
   updateTuition: (id, tuitionData) => api.put(`/tuitions/${id}`, tuitionData),
   deleteTuition: (id) => api.delete(`/tuitions/${id}`),
+};
+
+// Programs API
+export const programsAPI = {
+  getPrograms: (params) => api.get('/programs', { params }),
+  getProgramById: (id) => api.get(`/programs/${id}`),
+  createProgram: (programData) => api.post('/programs', programData),
+  updateProgram: (id, programData) => api.put(`/programs/${id}`, programData),
+  deleteProgram: (id) => api.delete(`/programs/${id}`),
+  getProgramStats: (id) => api.get(`/programs/${id}/stats`),
+  updateEnrollmentCount: (id, data) => api.patch(`/programs/${id}/enrollment`, data),
+};
+
+// Curriculum API
+export const curriculumAPI = {
+  getCurricula: (params) => api.get('/curriculum', { params }),
+  getCurriculumById: (id) => api.get(`/curriculum/${id}`),
+  getCurriculumByProgram: (program, params) => api.get(`/curriculum/program/${program}`, { params }),
+  createCurriculum: (curriculumData) => api.post('/curriculum', curriculumData),
+  updateCurriculum: (id, curriculumData) => api.put(`/curriculum/${id}`, curriculumData),
+  deleteCurriculum: (id) => api.delete(`/curriculum/${id}`),
 };

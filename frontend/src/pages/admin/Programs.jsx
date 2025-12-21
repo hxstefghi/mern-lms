@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, X, GraduationCap } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, GraduationCap, Users, DollarSign } from 'lucide-react';
+import { programsAPI } from '../../api';
 import { toast } from 'react-toastify';
 
 const Programs = () => {
@@ -12,52 +13,49 @@ const Programs = () => {
     code: '',
     name: '',
     description: '',
+    department: '',
+    degree: 'Bachelor',
+    duration: { years: 4, semesters: 8 },
+    capacity: 50,
+    tuitionFee: { amount: 0, currency: 'PHP' },
+    status: 'active',
   });
 
   useEffect(() => {
     loadPrograms();
   }, []);
 
-  const loadPrograms = () => {
-    const stored = localStorage.getItem('programs');
-    if (stored) {
-      setPrograms(JSON.parse(stored));
+  const loadPrograms = async () => {
+    try {
+      setLoading(true);
+      const response = await programsAPI.getPrograms({});
+      setPrograms(response.data.data || response.data || []);
+    } catch (error) {
+      console.error('Error loading programs:', error);
+      toast.error('Failed to load programs');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const savePrograms = (newPrograms) => {
-    localStorage.setItem('programs', JSON.stringify(newPrograms));
-    setPrograms(newPrograms);
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
       if (editingProgram) {
-        const updated = programs.map(p => 
-          p.id === editingProgram.id 
-            ? { ...editingProgram, ...formData, code: formData.code.toUpperCase() }
-            : p
-        );
-        savePrograms(updated);
+        await programsAPI.updateProgram(editingProgram._id, formData);
         toast.success('Program updated successfully!');
       } else {
-        const newProgram = {
-          id: Date.now(),
-          ...formData,
-          code: formData.code.toUpperCase(),
-          createdAt: new Date().toISOString(),
-        };
-        savePrograms([...programs, newProgram]);
+        await programsAPI.createProgram(formData);
         toast.success('Program created successfully!');
       }
       
       setShowModal(false);
       resetForm();
+      loadPrograms();
     } catch (error) {
-      toast.error('Failed to save program');
+      console.error('Error saving program:', error);
+      toast.error(error.response?.data?.message || 'Failed to save program');
     }
   };
 
@@ -67,17 +65,25 @@ const Programs = () => {
       code: program.code,
       name: program.name,
       description: program.description || '',
+      department: program.department || '',
+      degree: program.degree || 'Bachelor',
+      duration: program.duration || { years: 4, semesters: 8 },
+      capacity: program.capacity || 50,
+      tuitionFee: program.tuitionFee || { amount: 0, currency: 'PHP' },
+      status: program.status || 'active',
     });
     setShowModal(true);
   };
 
-  const handleDelete = (programId) => {
+  const handleDelete = async (programId) => {
     if (!window.confirm('Are you sure you want to delete this program?')) return;
 
     try {
-      savePrograms(programs.filter(p => p.id !== programId));
+      await programsAPI.deleteProgram(programId);
       toast.success('Program deleted successfully!');
+      loadPrograms();
     } catch (error) {
+      console.error('Error deleting program:', error);
       toast.error('Failed to delete program');
     }
   };
@@ -87,13 +93,20 @@ const Programs = () => {
       code: '',
       name: '',
       description: '',
+      department: '',
+      degree: 'Bachelor',
+      duration: { years: 4, semesters: 8 },
+      capacity: 50,
+      tuitionFee: { amount: 0, currency: 'PHP' },
+      status: 'active',
     });
     setEditingProgram(null);
   };
 
   const filteredPrograms = programs.filter(program =>
     program.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    program.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    program.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    program.department?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -145,18 +158,49 @@ const Programs = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPrograms.map((program) => (
-            <div key={program.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div key={program._id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
               <div className="mb-4">
-                <div className="text-sm font-medium text-indigo-600 mb-1">
-                  {program.code}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium text-indigo-600">
+                    {program.code}
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    program.status === 'active' 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {program.status}
+                  </span>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {program.name}
                 </h3>
+                {program.department && (
+                  <p className="text-xs text-gray-500 mb-2">{program.department}</p>
+                )}
                 {program.description && (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 line-clamp-2">
                     {program.description}
                   </p>
+                )}
+              </div>
+
+              <div className="space-y-2 mb-4 text-sm text-gray-600">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Users className="w-4 h-4 mr-1" />
+                    Capacity
+                  </span>
+                  <span className="font-medium">{program.enrolledStudents || 0}/{program.capacity}</span>
+                </div>
+                {program.tuitionFee && (
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center">
+                      <DollarSign className="w-4 h-4 mr-1" />
+                      Tuition
+                    </span>
+                    <span className="font-medium">₱{(program.tuitionFee.amount || 0).toLocaleString()}</span>
+                  </div>
                 )}
               </div>
 
@@ -169,7 +213,7 @@ const Programs = () => {
                   <span>Edit</span>
                 </button>
                 <button
-                  onClick={() => handleDelete(program.id)}
+                  onClick={() => handleDelete(program._id)}
                   className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -184,7 +228,7 @@ const Programs = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-900">
                 {editingProgram ? 'Edit Program' : 'Add New Program'}
@@ -201,18 +245,35 @@ const Programs = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Program Code *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., BSIT, BSCS"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent uppercase"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Program Code *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., BSIT, BSCS"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent uppercase"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status *
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -229,6 +290,39 @@ const Programs = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Department *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., College of Computing"
+                    value={formData.department}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Degree Type *
+                  </label>
+                  <select
+                    value={formData.degree}
+                    onChange={(e) => setFormData({ ...formData, degree: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="Bachelor">Bachelor</option>
+                    <option value="Master">Master</option>
+                    <option value="Doctorate">Doctorate</option>
+                    <option value="Certificate">Certificate</option>
+                    <option value="Diploma">Diploma</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description
@@ -237,6 +331,73 @@ const Programs = () => {
                   rows="3"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Years *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={formData.duration.years}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      duration: { ...formData.duration, years: parseInt(e.target.value) }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Semesters *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="2"
+                    value={formData.duration.semesters}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      duration: { ...formData.duration, semesters: parseInt(e.target.value) }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Capacity *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={formData.capacity}
+                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tuition Fee (PHP) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  value={formData.tuitionFee.amount}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    tuitionFee: { ...formData.tuitionFee, amount: parseFloat(e.target.value) }
+                  })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>

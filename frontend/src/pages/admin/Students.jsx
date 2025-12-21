@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { studentsAPI, usersAPI } from '../../api';
+import { studentsAPI, usersAPI, programsAPI } from '../../api';
 import { UserPlus, Plus, Edit2, Trash2, Search, X, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -34,14 +34,17 @@ const Students = () => {
   useEffect(() => {
     fetchStudents();
     fetchStudentUsers();
+    fetchPrograms();
   }, []);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('programs');
-    if (stored) {
-      setPrograms(JSON.parse(stored));
+  const fetchPrograms = async () => {
+    try {
+      const response = await programsAPI.getPrograms({});
+      setPrograms(response.data.data || response.data || []);
+    } catch (error) {
+      console.error('Error fetching programs:', error);
     }
-  }, []);
+  };
 
   const fetchStudentUsers = async () => {
     try {
@@ -103,17 +106,26 @@ const Students = () => {
             role: 'student',
             isActive: true,
           };
+          console.log('Creating user with payload:', userPayload);
           const userResponse = await usersAPI.createUser(userPayload);
-          userId = userResponse.data._id || userResponse.data.user?._id;
+          console.log('User response:', userResponse.data);
+          
+          // Try different possible response structures
+          userId = userResponse.data._id || 
+                   userResponse.data.user?._id || 
+                   userResponse.data.data?._id ||
+                   userResponse.data.id;
           
           if (!userId) {
-            throw new Error('Failed to create user account');
+            console.error('Failed to get user ID from response:', userResponse.data);
+            throw new Error('Failed to create user account - no user ID returned');
           }
+          console.log('User ID obtained:', userId);
         }
         
         // Create student profile
         const studentPayload = {
-          user: userId,
+          userId: userId,
           program: formData.program,
           yearLevel: formData.yearLevel,
           address: formData.address,
@@ -151,8 +163,8 @@ const Students = () => {
       password: '',
       program: student.program,
       yearLevel: student.yearLevel,
+      section: student.section || 'A',
       address: student.address || '',
-      contactNumber: student.contactNumber || '',
       emergencyContact: student.emergencyContact || {
         name: '',
         relationship: '',
@@ -186,8 +198,8 @@ const Students = () => {
       password: '',
       program: '',
       yearLevel: '1st Year',
+      section: 'A',
       address: '',
-      contactNumber: '',
       emergencyContact: {
         name: '',
         relationship: '',
@@ -514,7 +526,7 @@ const Students = () => {
                   >
                     <option value="">Select Program</option>
                     {programs.map((program) => (
-                      <option key={program.id} value={program.name}>
+                      <option key={program.id} value={program.code}>
                         {program.code} - {program.name}
                       </option>
                     ))}

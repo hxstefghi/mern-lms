@@ -179,7 +179,7 @@ export const addSubjectOffering = asyncHandler(async (req, res) => {
     throw new Error('Subject not found');
   }
 
-  const { schoolYear, semester, instructor, schedule, capacity } = req.body;
+  const { schoolYear, semester, instructor, schedule, room, capacity } = req.body;
 
   // Check for schedule conflicts
   const existingOffering = subject.offerings.find(
@@ -196,6 +196,7 @@ export const addSubjectOffering = asyncHandler(async (req, res) => {
     semester,
     instructor,
     schedule,
+    room,
     capacity: capacity || 40,
     enrolled: 0,
     isOpen: true,
@@ -229,10 +230,11 @@ export const updateSubjectOffering = asyncHandler(async (req, res) => {
     throw new Error('Offering not found');
   }
 
-  const { instructor, schedule, capacity, isOpen } = req.body;
+  const { instructor, schedule, room, capacity, isOpen } = req.body;
 
   if (instructor) offering.instructor = instructor;
   if (schedule) offering.schedule = schedule;
+  if (room) offering.room = room;
   if (capacity) offering.capacity = capacity;
   if (isOpen !== undefined) offering.isOpen = isOpen;
 
@@ -317,4 +319,128 @@ export const getAvailableOfferings = asyncHandler(async (req, res) => {
     .filter((subject) => subject !== null);
 
   res.json(availableSubjects);
+});
+
+const assertInstructorOwnsOffering = (req, offering) => {
+  if (req.user?.role !== 'instructor') return;
+  if (!offering?.instructor) {
+    const err = new Error('Offering instructor is not assigned');
+    err.statusCode = 403;
+    throw err;
+  }
+  if (String(offering.instructor) !== String(req.user._id)) {
+    const err = new Error('Not authorized to modify this offering');
+    err.statusCode = 403;
+    throw err;
+  }
+};
+
+const getSubjectAndOffering = async (req) => {
+  const subject = await Subject.findById(req.params.id);
+  if (!subject) {
+    const err = new Error('Subject not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const offering = subject.offerings.id(req.params.offeringId);
+  if (!offering) {
+    const err = new Error('Offering not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return { subject, offering };
+};
+
+// @desc    Get announcements for a subject offering
+// @route   GET /api/subjects/:id/offerings/:offeringId/announcements
+// @access  Private
+export const getOfferingAnnouncements = asyncHandler(async (req, res) => {
+  const { offering } = await getSubjectAndOffering(req);
+  res.json({ announcements: offering.announcements || [] });
+});
+
+// @desc    Create announcement for a subject offering
+// @route   POST /api/subjects/:id/offerings/:offeringId/announcements
+// @access  Private/Instructor/Admin
+export const createOfferingAnnouncement = asyncHandler(async (req, res) => {
+  const { subject, offering } = await getSubjectAndOffering(req);
+  assertInstructorOwnsOffering(req, offering);
+
+  const { title, content } = req.body;
+  if (!title || !content) {
+    res.status(400);
+    throw new Error('Title and content are required');
+  }
+
+  offering.announcements.unshift({ title, content, date: new Date() });
+  await subject.save();
+
+  res.status(201).json({ announcements: offering.announcements });
+});
+
+// @desc    Delete announcement from a subject offering
+// @route   DELETE /api/subjects/:id/offerings/:offeringId/announcements/:announcementId
+// @access  Private/Instructor/Admin
+export const deleteOfferingAnnouncement = asyncHandler(async (req, res) => {
+  const { subject, offering } = await getSubjectAndOffering(req);
+  assertInstructorOwnsOffering(req, offering);
+
+  const announcement = offering.announcements.id(req.params.announcementId);
+  if (!announcement) {
+    res.status(404);
+    throw new Error('Announcement not found');
+  }
+
+  announcement.deleteOne();
+  await subject.save();
+
+  res.json({ announcements: offering.announcements });
+});
+
+// @desc    Get materials for a subject offering
+// @route   GET /api/subjects/:id/offerings/:offeringId/materials
+// @access  Private
+export const getOfferingMaterials = asyncHandler(async (req, res) => {
+  const { offering } = await getSubjectAndOffering(req);
+  res.json({ materials: offering.materials || [] });
+});
+
+// @desc    Create material for a subject offering
+// @route   POST /api/subjects/:id/offerings/:offeringId/materials
+// @access  Private/Instructor/Admin
+export const createOfferingMaterial = asyncHandler(async (req, res) => {
+  const { subject, offering } = await getSubjectAndOffering(req);
+  assertInstructorOwnsOffering(req, offering);
+
+  const { title, type = 'link', url, description = '' } = req.body;
+  if (!title || !url) {
+    res.status(400);
+    throw new Error('Title and url are required');
+  }
+
+  offering.materials.unshift({ title, type, url, description, uploadDate: new Date() });
+  await subject.save();
+
+  res.status(201).json({ materials: offering.materials });
+});
+
+// @desc    Delete material from a subject offering
+// @route   DELETE /api/subjects/:id/offerings/:offeringId/materials/:materialId
+// @access  Private/Instructor/Admin
+export const deleteOfferingMaterial = asyncHandler(async (req, res) => {
+  const { subject, offering } = await getSubjectAndOffering(req);
+  assertInstructorOwnsOffering(req, offering);
+
+  const material = offering.materials.id(req.params.materialId);
+  if (!material) {
+    res.status(404);
+    throw new Error('Material not found');
+  }
+
+  material.deleteOne();
+  await subject.save();
+
+  res.json({ materials: offering.materials });
 });

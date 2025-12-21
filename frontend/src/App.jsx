@@ -14,6 +14,8 @@ import Login from './pages/auth/Login';
 // Student Pages
 import StudentDashboard from './pages/student/StudentDashboard';
 import Courses from './pages/student/Courses';
+import CourseDetail from './pages/student/CourseDetail';
+import CurriculumView from './pages/student/CurriculumView';
 import Enrollment from './pages/student/Enrollment';
 import RegistrationCard from './pages/student/RegistrationCard';
 import Tuition from './pages/student/Tuition';
@@ -26,9 +28,10 @@ import Students from './pages/admin/Students';
 import Instructors from './pages/admin/Instructors';
 import Programs from './pages/admin/Programs';
 import Subjects from './pages/admin/Subjects';
-import Curriculum from './pages/admin/Curriculum';
+import Curriculum from './pages/admin/Curriculum_Backup';
 import SubjectOfferings from './pages/admin/SubjectOfferings';
 import Enrollments from './pages/admin/Enrollments';
+import Tuitions from './pages/admin/Tuitions';
 
 // Instructor Pages
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
@@ -54,6 +57,8 @@ function App() {
           >
             <Route index element={<StudentDashboard />} />
             <Route path="courses" element={<Courses />} />
+            <Route path="courses/:subjectId/offering/:offeringId" element={<CourseDetail />} />
+            <Route path="curriculum" element={<CurriculumView />} />
           </Route>
 
           {/* Student Information System (SIS) Routes */}
@@ -65,6 +70,7 @@ function App() {
               </ProtectedRoute>
             }
           >
+            <Route index element={<Navigate to="/sis/enrollment" replace />} />
             <Route path="enrollment" element={<Enrollment />} />
             <Route path="registration" element={<RegistrationCard />} />
             <Route path="tuition" element={<Tuition />} />
@@ -89,6 +95,7 @@ function App() {
             <Route path="curriculum" element={<Curriculum />} />
             <Route path="subject-offerings" element={<SubjectOfferings />} />
             <Route path="enrollments" element={<Enrollments />} />
+            <Route path="tuition" element={<Tuitions />} />
           </Route>
 
           {/* Instructor Routes */}

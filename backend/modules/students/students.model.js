@@ -42,7 +42,7 @@ const studentSchema = new mongoose.Schema(
     studentNumber: {
       type: String,
       unique: true,
-      required: true,
+      sparse: true, // Allow null values during creation before pre-save hook
     },
     program: {
       type: String,
@@ -53,6 +53,11 @@ const studentSchema = new mongoose.Schema(
       type: String,
       enum: ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'],
       required: [true, 'Year level is required'],
+    },
+    section: {
+      type: String,
+      required: false,
+      trim: true,
     },
     dateOfBirth: {
       type: Date,

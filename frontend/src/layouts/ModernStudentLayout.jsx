@@ -2,7 +2,8 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
   LayoutDashboard, 
-  BookOpen, 
+  BookOpen,
+  BookMarked,
   GraduationCap, 
   LogOut,
   Menu,
@@ -24,6 +25,7 @@ const ModernStudentLayout = () => {
   const navItems = [
     { path: '/student', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/student/courses', label: 'My Courses', icon: BookOpen },
+    { path: '/student/curriculum', label: 'Program Curriculum', icon: BookMarked },
   ];
 
   return (

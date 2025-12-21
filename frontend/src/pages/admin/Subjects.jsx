@@ -27,6 +27,7 @@ const Subjects = () => {
     instructor: '',
     schedule: [],
     capacity: 40,
+    room: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -124,12 +125,14 @@ const Subjects = () => {
 
   const handleAssignInstructor = (subject) => {
     setSelectedSubject(subject);
+    
     setOfferingData({
       schoolYear: '',
-      semester: '1st',
-      instructor: '',
+      semester: subject.semester, // Default to subject's semester
+      instructor: '', // User will select from available instructors
       schedule: [],
       capacity: 40,
+      room: '',
     });
     setShowOfferingModal(true);
   };
@@ -140,8 +143,18 @@ const Subjects = () => {
     setSuccess('');
 
     try {
-      await subjectsAPI.addSubjectOffering(selectedSubject._id, offeringData);
-      toast.success('Instructor assigned successfully!');
+      // Create a schedule entry with the room
+      const scheduleWithRoom = offeringData.room ? [
+        { day: 'Monday', startTime: '08:00', endTime: '10:00', room: offeringData.room }
+      ] : [];
+
+      const submissionData = {
+        ...offeringData,
+        schedule: scheduleWithRoom
+      };
+
+      await subjectsAPI.addSubjectOffering(selectedSubject._id, submissionData);
+      toast.success('Offering created successfully!');
       setShowOfferingModal(false);
       setOfferingData({
         schoolYear: '',
@@ -149,10 +162,11 @@ const Subjects = () => {
         instructor: '',
         schedule: [],
         capacity: 40,
+        room: '',
       });
       await fetchSubjects();
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Failed to assign instructor';
+      const errorMsg = error.response?.data?.message || 'Failed to create offering';
       toast.error(errorMsg);
       setError(errorMsg);
     }
@@ -493,18 +507,16 @@ const Subjects = () => {
             </div>
 
             <form onSubmit={handleOfferingSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  School Year *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., 2023-2024"
-                  value={offeringData.schoolYear}
-                  onChange={(e) => setOfferingData({ ...offeringData, schoolYear: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Subject:</strong> {selectedSubject?.code} - {selectedSubject?.name}
+                </p>
+                <p className="text-sm text-blue-800 mt-1">
+                  <strong>Program:</strong> {selectedSubject?.program}
+                </p>
+                <p className="text-sm text-blue-800 mt-1">
+                  <strong>Year Level:</strong> {selectedSubject?.yearLevel}
+                </p>
               </div>
 
               <div>
@@ -512,6 +524,7 @@ const Subjects = () => {
                   Semester *
                 </label>
                 <select
+                  required
                   value={offeringData.semester}
                   onChange={(e) => setOfferingData({ ...offeringData, semester: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -533,24 +546,57 @@ const Subjects = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="">Select Instructor</option>
-                  {instructors.map((instructor) => (
-                    <option key={instructor._id} value={instructor._id}>
-                      {instructor.firstName} {instructor.lastName}
-                      {instructor.assignedProgram && ` - ${instructor.assignedProgram}`}
-                    </option>
-                  ))}
+                  {instructors
+                    .filter(instructor => instructor.assignedProgram === selectedSubject?.program)
+                    .map((instructor) => (
+                      <option key={instructor._id} value={instructor._id}>
+                        {instructor.firstName} {instructor.lastName}
+                      </option>
+                    ))}
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Showing instructors assigned to {selectedSubject?.program} program
+                </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Class Capacity
+                  School Year *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., 2024-2025"
+                  value={offeringData.schoolYear}
+                  onChange={(e) => setOfferingData({ ...offeringData, schoolYear: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Class Capacity *
                 </label>
                 <input
                   type="number"
+                  required
                   min="1"
                   value={offeringData.capacity}
                   onChange={(e) => setOfferingData({ ...offeringData, capacity: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Room *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., Room 101, Lab 3"
+                  value={offeringData.room || ''}
+                  onChange={(e) => setOfferingData({ ...offeringData, room: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
@@ -560,7 +606,7 @@ const Subjects = () => {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
                 >
-                  Assign Instructor
+                  Create Offering
                 </button>
                 <button
                   type="button"
