@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { studentsAPI, subjectsAPI, enrollmentsAPI, usersAPI, programsAPI } from '../../api';
-import { Users, BookOpen, GraduationCap, ClipboardList, UserCheck, TrendingUp, Calendar, Bell } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, ClipboardList, UserCheck, Calendar } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from 'recharts';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -47,6 +56,14 @@ const AdminDashboard = () => {
       </div>
     );
   }
+
+  const chartData = [
+    { name: 'Students', value: stats.totalStudents },
+    { name: 'Programs', value: stats.totalPrograms },
+    { name: 'Subjects', value: stats.totalSubjects },
+    { name: 'Instructors', value: stats.totalInstructors },
+    { name: 'Pending', value: stats.pendingEnrollments },
+  ];
 
   return (
     <div className="space-y-6">
@@ -114,69 +131,33 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* System Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick Stats */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Quick Stats</h2>
-            <TrendingUp className="w-5 h-5 text-gray-400" />
+      {/* Statistics */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Statistics</h2>
+            <p className="text-sm text-gray-600 mt-1">High-level distribution of system totals</p>
           </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Active Students</span>
-              </div>
-              <span className="text-sm font-semibold text-gray-900">{stats.totalStudents}</span>
-            </div>
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Active Courses</span>
-              </div>
-              <span className="text-sm font-semibold text-gray-900">{stats.totalSubjects}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">Faculty Members</span>
-              </div>
-              <span className="text-sm font-semibold text-gray-900">{stats.totalInstructors}</span>
-            </div>
-          </div>
+          <div className="text-xs text-gray-500">Counts</div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-            <Bell className="w-5 h-5 text-gray-400" />
-          </div>
-          <div className="space-y-4">
-            {stats.pendingEnrollments > 0 && (
-              <div className="flex items-start space-x-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <ClipboardList className="w-4 h-4 text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">Pending Enrollment Requests</p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {stats.pendingEnrollments} enrollment{stats.pendingEnrollments !== 1 ? 's' : ''} waiting for approval
-                  </p>
-                </div>
-              </div>
-            )}
-            <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-              <div className="p-2 bg-gray-100 rounded-lg">
-                <Users className="w-4 h-4 text-gray-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">System Status</p>
-                <p className="text-xs text-gray-600 mt-1">All systems operational</p>
-              </div>
-            </div>
-          </div>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip
+                cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                contentStyle={{
+                  borderRadius: 12,
+                  borderColor: 'rgba(0,0,0,0.08)',
+                  fontSize: 12,
+                }}
+              />
+              <Bar dataKey="value" fill="currentColor" className="text-indigo-600" radius={[10, 10, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

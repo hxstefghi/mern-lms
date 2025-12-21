@@ -3,7 +3,6 @@ import { useAuth } from '../hooks/useAuth';
 import { 
   LayoutDashboard, 
   BookOpen, 
-  Users, 
   LogOut,
   Menu,
   X
@@ -16,19 +15,31 @@ const ModernInstructorLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  const currentPath = location.pathname.replace(/\/+$/, '');
+  const isNavItemActive = (itemPath) => {
+    const normalizedItemPath = itemPath.replace(/\/+$/, '');
+    if (normalizedItemPath === '/instructor') return currentPath === '/instructor';
+    return currentPath === normalizedItemPath || currentPath.startsWith(`${normalizedItemPath}/`);
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const navItems = [
-    { path: '/instructor', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/instructor/subjects', label: 'My Subjects', icon: BookOpen },
-    { path: '/instructor/students', label: 'Students', icon: Users },
+  const navSections = [
+    {
+      title: 'Overview',
+      items: [{ path: '/instructor', label: 'Dashboard', icon: LayoutDashboard }],
+    },
+    {
+      title: 'Teaching',
+      items: [{ path: '/instructor/subjects', label: 'My Subjects', icon: BookOpen }],
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 font-['Inter',_sans-serif]">
+    <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -51,7 +62,7 @@ const ModernInstructorLayout = () => {
           {/* User Info */}
           <div className="p-6 border-b border-gray-100">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
               </div>
               <div className="flex-1 min-w-0">
@@ -62,25 +73,37 @@ const ModernInstructorLayout = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-green-50 text-green-600'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+          <nav className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-5">
+              {navSections.map((section) => (
+                <div key={section.title}>
+                  <div className="px-3 mb-2 text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                    {section.title}
+                  </div>
+                  <div className="space-y-1">
+                    {section.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = isNavItemActive(item.path);
+
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'bg-green-50 text-green-600'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </nav>
 
           {/* Logout */}

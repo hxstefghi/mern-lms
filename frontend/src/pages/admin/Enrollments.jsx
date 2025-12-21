@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { enrollmentsAPI, studentsAPI, subjectsAPI, curriculumAPI } from '../../api';
+import { enrollmentsAPI, studentsAPI, subjectsAPI } from '../../api';
 import { ClipboardList, Plus, Check, X as XIcon, Search, Filter, Calendar, BookOpen, User, Zap } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -15,8 +15,6 @@ const Enrollments = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
-  const [autoEnrollMode, setAutoEnrollMode] = useState(true);
-  const [curriculumSubjects, setCurriculumSubjects] = useState([]);
   const [enrollmentData, setEnrollmentData] = useState({
     schoolYear: '',
     semester: '1st',
@@ -61,7 +59,7 @@ const Enrollments = () => {
     fetchStudents();
   }, [fetchEnrollments, fetchStudents]);
 
-  const fetchAvailableSubjects = async (program, yearLevel, schoolYear, semester) => {
+  const fetchAvailableSubjects = useCallback(async (program, yearLevel, schoolYear, semester) => {
     try {
       const response = await subjectsAPI.getAvailableOfferings({
         program,
@@ -74,7 +72,7 @@ const Enrollments = () => {
       console.error('Error fetching subjects:', error);
       setError('Failed to load available subjects');
     }
-  };
+  }, []);
 
   const handleApprove = async (enrollmentId) => {
     if (!window.confirm('Are you sure you want to approve this enrollment?')) return;
@@ -119,122 +117,25 @@ const Enrollments = () => {
     }
   };
 
-  const handleStudentSelect = async (studentId) => {
-    const student = students.find(s => s._id === studentId);
+  const handleStudentSelect = (studentId) => {
+    const student = students.find(s => s._id === studentId) || null;
     setSelectedStudent(student);
-    
-    if (student && enrollmentData.schoolYear && enrollmentData.semester) {
-      if (autoEnrollMode) {
-        // Auto-enrollment: Load curriculum subjects
-        await loadCurriculumSubjects(student, enrollmentData.schoolYear, enrollmentData.semester);
-      } else {
-        // Manual mode: Load available subjects
-        await fetchAvailableSubjects(
-          student.program,
-          student.yearLevel,
-          enrollmentData.schoolYear,
-          enrollmentData.semester
-        );
-      }
-    }
+    setSelectedSubjects([]);
+    setSubjects([]);
+    setError('');
   };
 
-  const loadCurriculumSubjects = async (student, schoolYear, semester) => {
-    try {
-      console.log('Loading curriculum for:', { program: student.program, yearLevel: student.yearLevel, semester });
-      
-      // Get curricula from API
-      const curriculaResponse = await curriculumAPI.getCurricula({});
-      const curricula = curriculaResponse.data.curricula || curriculaResponse.data.data || curriculaResponse.data || [];
-      
-      console.log('All curricula:', curricula);
-      
-      if (curricula.length === 0) {
-        setError('No curricula found. Please create curriculum first.');
-        setCurriculumSubjects([]);
-        return;
-      }
+  useEffect(() => {
+    if (!selectedStudent) return;
+    if (!enrollmentData.schoolYear || !enrollmentData.semester) return;
 
-      // Find matching curriculum for student's program and status Active
-      const matchingCurriculum = curricula.find(c => 
-        c.program === student.program &&
-        c.status === 'Active'
-      );
-
-      console.log('Matching curriculum:', matchingCurriculum);
-
-      if (!matchingCurriculum) {
-        setError(`No active curriculum found for ${student.program}`);
-        setCurriculumSubjects([]);
-        return;
-      }
-
-      // Filter curriculum subjects by year level and semester
-      const curriculumSubjectsForYearSemester = matchingCurriculum.subjects.filter(cs => 
-        cs.yearLevel === student.yearLevel &&
-        cs.semester === semester
-      );
-
-      console.log('Filtered curriculum subjects:', curriculumSubjectsForYearSemester);
-
-      if (curriculumSubjectsForYearSemester.length === 0) {
-        setError(`No subjects found in curriculum for ${student.yearLevel} - ${semester} Semester`);
-        setCurriculumSubjects([]);
-        return;
-      }
-
-      // Get all subjects from API to populate offerings
-      const subjectsResponse = await subjectsAPI.getSubjects({});
-      const allSubjects = subjectsResponse.data.subjects || subjectsResponse.data || [];
-
-      // Build subjects with their offerings that match school year and semester
-      const matchingOfferings = [];
-      
-      for (const currSubject of curriculumSubjectsForYearSemester) {
-        const subjectId = currSubject.subject._id || currSubject.subject;
-        const subject = allSubjects.find(s => s._id === subjectId);
-        
-        if (!subject) continue;
-
-        // Filter offerings for this subject
-        const offerings = (subject.offerings || []).filter(o => 
-          o.schoolYear === schoolYear &&
-          o.semester === semester &&
-          o.isOpen === true &&
-          o.enrolled < o.capacity
-        );
-
-        if (offerings.length > 0) {
-          matchingOfferings.push({
-            ...subject,
-            offerings: offerings
-          });
-        }
-      }
-
-      console.log('Matching offerings:', matchingOfferings);
-
-      setCurriculumSubjects(matchingOfferings);
-      
-      // Auto-select first offering of each subject
-      const autoSelectedOfferings = matchingOfferings
-        .filter(s => s.offerings && s.offerings.length > 0)
-        .map(s => s.offerings[0]._id);
-      
-      setSelectedSubjects(autoSelectedOfferings);
-
-      if (matchingOfferings.length === 0) {
-        setError('No available offerings for curriculum subjects. Please create subject offerings first.');
-      } else {
-        toast.success(`Auto-loaded ${matchingOfferings.length} curriculum subjects`);
-      }
-
-    } catch (error) {
-      console.error('Error loading curriculum subjects:', error);
-      setError('Failed to load curriculum subjects');
-      setCurriculumSubjects([]);
-    }
-  };
+    fetchAvailableSubjects(
+      selectedStudent.program,
+      selectedStudent.yearLevel,
+      enrollmentData.schoolYear,
+      enrollmentData.semester
+    );
+  }, [selectedStudent, enrollmentData.schoolYear, enrollmentData.semester, fetchAvailableSubjects]);
 
   const handleEnrollStudent = async (e) => {
     e.preventDefault();
@@ -252,36 +153,18 @@ const Enrollments = () => {
     }
 
     try {
-      let subjectsPayload;
-      
-      if (autoEnrollMode) {
-        // Auto-enrollment: Use curriculum subjects + their MongoDB offerings
-        subjectsPayload = selectedSubjects.map((offeringId) => {
-          const subject = curriculumSubjects.find((s) =>
-            s.offerings?.some((o) => String(o._id) === String(offeringId))
-          );
+      const subjectsPayload = selectedSubjects.map((offeringId) => {
+        const subject = subjects.find((s) => s.offerings?.some((o) => o._id === offeringId));
 
-          if (!subject) {
-            throw new Error('Selected offering not found in curriculum offerings');
-          }
+        if (!subject) {
+          throw new Error('Selected offering not found in available subjects');
+        }
 
-          return {
-            subjectId: subject._id,
-            offeringId,
-          };
-        });
-      } else {
-        // Manual enrollment: Use API subjects
-        subjectsPayload = selectedSubjects.map(offeringId => {
-          const subject = subjects.find(s => 
-            s.offerings?.some(o => o._id === offeringId)
-          );
-          return {
-            subjectId: subject._id,
-            offeringId: offeringId,
-          };
-        });
-      }
+        return {
+          subjectId: subject._id,
+          offeringId,
+        };
+      });
 
       const payload = {
         studentId: selectedStudent._id,
@@ -307,7 +190,6 @@ const Enrollments = () => {
     setSelectedStudent(null);
     setSelectedSubjects([]);
     setSubjects([]);
-    setCurriculumSubjects([]);
     setEnrollmentData({
       schoolYear: '',
       semester: '1st',
@@ -330,21 +212,10 @@ const Enrollments = () => {
   });
 
   const getTotalUnits = () => {
-    if (autoEnrollMode) {
-      return selectedSubjects.reduce((sum, offeringId) => {
-        const subject = curriculumSubjects.find(s => 
-          s.offerings?.some(o => o.id === offeringId)
-        );
-        return sum + (subject?.units || 0);
-      }, 0);
-    } else {
-      return selectedSubjects.reduce((sum, offeringId) => {
-        const subject = subjects.find(s => 
-          s.offerings?.some(o => o._id === offeringId)
-        );
-        return sum + (subject?.units || 0);
-      }, 0);
-    }
+    return selectedSubjects.reduce((sum, offeringId) => {
+      const subject = subjects.find((s) => s.offerings?.some((o) => o._id === offeringId));
+      return sum + (subject?.units || 0);
+    }, 0);
   };
 
   // Blocked Section Enrollment
@@ -516,7 +387,7 @@ const Enrollments = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
                         {enrollment.student?.user?.firstName?.[0]}{enrollment.student?.user?.lastName?.[0]}
                       </div>
                       <div>
@@ -645,42 +516,6 @@ const Enrollments = () => {
             )}
 
             <form onSubmit={handleEnrollStudent} className="space-y-6">
-              {/* Enrollment Mode Toggle */}
-              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
-                <div className="flex items-center space-x-3">
-                  <Zap className={`w-5 h-5 ${autoEnrollMode ? 'text-indigo-600' : 'text-gray-400'}`} />
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {autoEnrollMode ? 'Auto-Enrollment Mode' : 'Manual Enrollment Mode'}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      {autoEnrollMode 
-                        ? 'Automatically loads curriculum subjects based on program/year/semester' 
-                        : 'Manually select subjects for irregular students'
-                      }
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAutoEnrollMode(!autoEnrollMode);
-                    setSelectedSubjects([]);
-                    setCurriculumSubjects([]);
-                    setSubjects([]);
-                  }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    autoEnrollMode ? 'bg-indigo-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      autoEnrollMode ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-
               {/* Period Selection */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -738,117 +573,64 @@ const Enrollments = () => {
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="text-sm font-medium text-gray-900">
-                        {autoEnrollMode ? 'Curriculum Subjects' : 'Available Subjects'}
+                        Available Subjects
                       </h3>
                       <div className="text-sm text-gray-600">
                         Total Units: <span className="font-medium text-indigo-600">{getTotalUnits()}</span>
                       </div>
                     </div>
 
-                    {autoEnrollMode ? (
-                      // Auto-enrollment: Display curriculum subjects
-                      curriculumSubjects.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                          <p>No curriculum subjects available</p>
-                          <p className="text-xs mt-1">Please create curriculum and offerings first</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {curriculumSubjects.map((subject) => (
-                            subject.offerings?.map((offering) => (
-                              <div
-                                key={offering.id}
-                                onClick={() => toggleSubjectSelection(offering.id)}
-                                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                                  selectedSubjects.includes(offering.id)
-                                    ? 'border-indigo-500 bg-indigo-50'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                }`}
-                              >
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedSubjects.includes(offering.id)}
-                                        onChange={() => {}}
-                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded"
-                                      />
-                                      <span className="font-medium text-gray-900">
-                                        {subject.code} - {subject.name}
-                                      </span>
-                                      <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">
-                                        Curriculum
-                                      </span>
-                                    </div>
-                                    <div className="text-sm text-gray-600 ml-6">
-                                      {offering.instructorName} • {offering.schedule} • Room {offering.room}
-                                    </div>
-                                    <div className="text-sm text-gray-500 ml-6">
-                                      {offering.enrolled}/{offering.capacity} enrolled • {subject.units} units
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))
-                          ))}
-                        </div>
-                      )
+                    {subjects.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p>No available subjects for this program and semester</p>
+                      </div>
                     ) : (
-                      // Manual enrollment: Display all available subjects
-                      subjects.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                          <p>No available subjects for this program and semester</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {subjects.map((subject) => (
-                            subject.offerings?.map((offering) => (
-                              <div
-                                key={offering._id}
-                                onClick={() => toggleSubjectSelection(offering._id)}
-                                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                                  selectedSubjects.includes(offering._id)
-                                    ? 'border-indigo-500 bg-indigo-50'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                }`}
-                              >
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedSubjects.includes(offering._id)}
-                                        onChange={() => {}}
-                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                      />
-                                      <h4 className="font-medium text-gray-900">{subject.code}</h4>
-                                      <span className="text-sm text-gray-600">- {subject.name}</span>
-                                    </div>
-                                    <div className="ml-6 text-sm text-gray-600">
-                                      <div className="flex items-center space-x-4 mt-1">
-                                        <span>{subject.units} units</span>
-                                        {offering.instructor && (
-                                          <span>• Instructor: {offering.instructor.firstName} {offering.instructor.lastName}</span>
-                                        )}
-                                        <span>• Slots: {offering.enrolled}/{offering.capacity}</span>
-                                      </div>
-                                      {offering.schedule && (
-                                        <div className="text-xs bg-gray-100 px-2 py-1 rounded mt-2 inline-block">
-                                          {offering.schedule}
-                                          {offering.room && <span> • Room {offering.room}</span>}
-                                        </div>
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {subjects.map((subject) => (
+                          subject.offerings?.map((offering) => (
+                            <div
+                              key={offering._id}
+                              onClick={() => toggleSubjectSelection(offering._id)}
+                              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                                selectedSubjects.includes(offering._id)
+                                  ? 'border-indigo-500 bg-indigo-50'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedSubjects.includes(offering._id)}
+                                      onChange={() => {}}
+                                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                    />
+                                    <h4 className="font-medium text-gray-900">{subject.code}</h4>
+                                    <span className="text-sm text-gray-600">- {subject.name}</span>
+                                  </div>
+                                  <div className="ml-6 text-sm text-gray-600">
+                                    <div className="flex items-center space-x-4 mt-1">
+                                      <span>{subject.units} units</span>
+                                      {offering.instructor && (
+                                        <span>• Instructor: {offering.instructor.firstName} {offering.instructor.lastName}</span>
                                       )}
+                                      <span>• Slots: {offering.enrolled}/{offering.capacity}</span>
                                     </div>
+                                    {offering.schedule && (
+                                      <div className="text-xs bg-gray-100 px-2 py-1 rounded mt-2 inline-block">
+                                        {offering.schedule}
+                                        {offering.room && <span> • Room {offering.room}</span>}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
-                            ))
-                          ))}
-                        </div>
-                      )
+                            </div>
+                          ))
+                        ))}
+                      </div>
                     )}
                   </div>
 

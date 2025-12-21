@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { subjectsAPI, enrollmentsAPI } from '../../api';
-import { Users, Bell, FileText, Plus, X, Upload, Link as LinkIcon, Video, Download, Trash2, BookOpen, Calendar, Clock } from 'lucide-react';
+import { ArrowLeft, Users, Bell, FileText, Plus, X, Upload, Link as LinkIcon, Video, Download, Trash2, BookOpen, Calendar, Clock } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const SubjectDetail = () => {
   const { subjectId, offeringId } = useParams();
+  const navigate = useNavigate();
   const [subject, setSubject] = useState(null);
   const [offering, setOffering] = useState(null);
   const [enrolledStudents, setEnrolledStudents] = useState([]);
@@ -168,6 +169,17 @@ const SubjectDetail = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <div>
+        <button
+          type="button"
+          onClick={() => navigate('/instructor/subjects')}
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to My Subjects
+        </button>
+      </div>
+
       {/* Header Card */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <div className="h-2 bg-indigo-600"></div>
