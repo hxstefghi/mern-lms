@@ -33,7 +33,7 @@ const SubjectAnnouncements = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await subjectsAPI.addOfferingAnnouncement(subjectId, offeringId, form);
+      await subjectsAPI.postOfferingAnnouncement(subjectId, offeringId, form);
       toast.success('Announcement posted successfully!');
       setForm({ title: '', content: '' });
       setShowModal(false);

@@ -35,7 +35,7 @@ const SubjectMaterials = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await subjectsAPI.addOfferingMaterial(subjectId, offeringId, form);
+      await subjectsAPI.postOfferingMaterial(subjectId, offeringId, form);
       toast.success('Material uploaded successfully!');
       setForm({ title: '', type: 'link', url: '', description: '' });
       setShowModal(false);
