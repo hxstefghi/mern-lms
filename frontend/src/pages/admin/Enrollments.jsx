@@ -255,15 +255,19 @@ const Enrollments = () => {
       let subjectsPayload;
       
       if (autoEnrollMode) {
-        // Auto-enrollment: Use curriculum offerings from localStorage
-        subjectsPayload = selectedSubjects.map(offeringId => {
-          const offering = curriculumSubjects
-            .flatMap(s => s.offerings)
-            .find(o => o.id === offeringId);
-          
+        // Auto-enrollment: Use curriculum subjects + their MongoDB offerings
+        subjectsPayload = selectedSubjects.map((offeringId) => {
+          const subject = curriculumSubjects.find((s) =>
+            s.offerings?.some((o) => String(o._id) === String(offeringId))
+          );
+
+          if (!subject) {
+            throw new Error('Selected offering not found in curriculum offerings');
+          }
+
           return {
-            subjectId: offering.subjectId,
-            offeringId: offeringId,
+            subjectId: subject._id,
+            offeringId,
           };
         });
       } else {
@@ -284,8 +288,7 @@ const Enrollments = () => {
         schoolYear: enrollmentData.schoolYear,
         semester: enrollmentData.semester,
         subjects: subjectsPayload,
-        enrollmentType: autoEnrollMode ? 'Auto-Curriculum' : 'Admin-Manual',
-        status: 'Approved', // Auto-approve admin enrollments
+        enrollmentType: 'Admin',
       };
 
       await enrollmentsAPI.createEnrollment(payload);
@@ -369,8 +372,7 @@ const Enrollments = () => {
           schoolYear: blockedSectionData.schoolYear,
           semester: blockedSectionData.semester,
           subjects,
-          enrollmentType: 'Blocked-Section',
-          status: 'Approved', // Auto-approve admin enrollments
+          enrollmentType: 'Admin',
         });
       });
 

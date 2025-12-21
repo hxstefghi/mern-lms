@@ -5,8 +5,12 @@ import Subject from '../subjects/subjects.model.js';
 
 // Helper function to check schedule conflicts
 const checkScheduleConflict = (schedule1, schedule2) => {
+  if (!Array.isArray(schedule1) || !Array.isArray(schedule2)) {
+    return false;
+  }
   for (const s1 of schedule1) {
     for (const s2 of schedule2) {
+      if (!s1 || !s2) continue;
       if (s1.day === s2.day) {
         const start1 = new Date(`2000-01-01 ${s1.startTime}`);
         const end1 = new Date(`2000-01-01 ${s1.endTime}`);
