@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { studentsAPI, enrollmentsAPI } from '../../api';
 import { BookOpen, Clock, User, MapPin, GraduationCap, Grid, List, CheckCircle, ArrowRight, LayoutGrid, Users } from 'lucide-react';
@@ -7,19 +7,15 @@ import { useNavigate } from 'react-router-dom';
 const Courses = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [student, setStudent] = useState(null);
   const [currentEnrollment, setCurrentEnrollment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid');
 
-  useEffect(() => {
-    fetchData();
-  }, [user]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
+      if (!user?._id) return;
+
       const studentRes = await studentsAPI.getStudentByUserId(user._id);
-      setStudent(studentRes.data);
 
       const enrollmentsRes = await enrollmentsAPI.getStudentEnrollments(studentRes.data._id);
       const enrollments = enrollmentsRes.data.enrollments || enrollmentsRes.data || [];
@@ -31,7 +27,11 @@ const Courses = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -225,7 +225,7 @@ const Courses = () => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 flex-1">
-                    <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
                       <BookOpen className="w-6 h-6 text-white" />
                     </div>
                     
@@ -241,7 +241,7 @@ const Courses = () => {
                       <h3 className="text-base font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
                         {subject?.name}
                       </h3>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-gray-600">
                         {offering?.instructor && (
                           <span className="flex items-center">
                             <User className="w-4 h-4 mr-1 text-gray-400" />
@@ -264,7 +264,7 @@ const Courses = () => {
                     </div>
                   </div>
 
-                  <svg className="w-6 h-6 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </div>

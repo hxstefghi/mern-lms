@@ -107,7 +107,7 @@ const RegistrationCard = () => {
 
           {/* Student Info */}
           <div className="p-6 border-b border-gray-200">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <div className="text-sm text-gray-600 mb-1">Student Number</div>
                 <div className="font-semibold text-gray-900">

@@ -118,68 +118,70 @@ const AcademicHistory = () => {
               </div>
 
               <div className="p-6">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                        Subject Code
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                        Subject Name
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                        Instructor
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
-                        Units
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
-                        Grade
-                      </th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
-                        Remarks
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {period.subjects.map((record, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {record.subject?.code}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {record.subject?.name}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {record.instructor
-                            ? `${record.instructor.firstName} ${record.instructor.lastName}`
-                            : 'N/A'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 text-center">
-                          {record.subject?.units}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 text-center">
-                          {record.grade || 'N/A'}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              record.remarks === 'Passed'
-                                ? 'bg-green-100 text-green-800'
-                                : record.remarks === 'Failed'
-                                ? 'bg-red-100 text-red-800'
-                                : record.remarks === 'In Progress'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}
-                          >
-                            {record.remarks}
-                          </span>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="min-w-max w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                          Subject Code
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                          Subject Name
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                          Instructor
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
+                          Units
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
+                          Grade
+                        </th>
+                        <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
+                          Remarks
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {period.subjects.map((record, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            {record.subject?.code}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {record.subject?.name}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {record.instructor
+                              ? `${record.instructor.firstName} ${record.instructor.lastName}`
+                              : 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-center">
+                            {record.subject?.units}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-center">
+                            {record.grade || 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span
+                              className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                record.remarks === 'Passed'
+                                  ? 'bg-green-100 text-green-800'
+                                  : record.remarks === 'Failed'
+                                  ? 'bg-red-100 text-red-800'
+                                  : record.remarks === 'In Progress'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {record.remarks}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           ))}

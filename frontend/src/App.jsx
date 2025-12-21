@@ -15,6 +15,9 @@ import Login from './pages/auth/Login';
 import StudentDashboard from './pages/student/StudentDashboard';
 import Courses from './pages/student/Courses';
 import CourseDetail from './pages/student/CourseDetail';
+import CourseOverview from './pages/student/CourseOverview';
+import CourseAnnouncements from './pages/student/CourseAnnouncements';
+import CourseMaterials from './pages/student/CourseMaterials';
 import CurriculumView from './pages/student/CurriculumView';
 import Enrollment from './pages/student/Enrollment';
 import RegistrationCard from './pages/student/RegistrationCard';
@@ -37,6 +40,9 @@ import Tuitions from './pages/admin/Tuitions';
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
 import MySubjects from './pages/instructor/MySubjects';
 import SubjectDetail from './pages/instructor/SubjectDetail';
+import SubjectOverview from './pages/instructor/SubjectOverview';
+import SubjectAnnouncements from './pages/instructor/SubjectAnnouncements';
+import SubjectMaterials from './pages/instructor/SubjectMaterials';
 
 function App() {
   return (
@@ -57,7 +63,11 @@ function App() {
           >
             <Route index element={<StudentDashboard />} />
             <Route path="courses" element={<Courses />} />
-            <Route path="courses/:subjectId/offering/:offeringId" element={<CourseDetail />} />
+            <Route path="courses/:subjectId/offering/:offeringId" element={<CourseDetail />}>
+              <Route index element={<CourseOverview />} />
+              <Route path="announcements" element={<CourseAnnouncements />} />
+              <Route path="materials" element={<CourseMaterials />} />
+            </Route>
             <Route path="curriculum" element={<CurriculumView />} />
           </Route>
 
@@ -109,7 +119,11 @@ function App() {
           >
             <Route index element={<InstructorDashboard />} />
             <Route path="subjects" element={<MySubjects />} />
-            <Route path="subjects/:subjectId/offering/:offeringId" element={<SubjectDetail />} />
+            <Route path="subjects/:subjectId/offering/:offeringId" element={<SubjectDetail />}>
+              <Route index element={<SubjectOverview />} />
+              <Route path="announcements" element={<SubjectAnnouncements />} />
+              <Route path="materials" element={<SubjectMaterials />} />
+            </Route>
           </Route>
 
           {/* Default Route */}

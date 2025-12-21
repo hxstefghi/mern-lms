@@ -14,13 +14,45 @@ import {
   BookCheck,
   Calendar
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const ModernAdminLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+
+    const syncSidebarToViewport = (eventOrQuery) => {
+      const matches = 'matches' in eventOrQuery ? eventOrQuery.matches : mediaQuery.matches;
+      setSidebarOpen(matches);
+    };
+
+    syncSidebarToViewport(mediaQuery);
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', syncSidebarToViewport);
+      return () => mediaQuery.removeEventListener('change', syncSidebarToViewport);
+    }
+
+    mediaQuery.addListener(syncSidebarToViewport);
+    return () => mediaQuery.removeListener(syncSidebarToViewport);
+  }, []);
+
+  useEffect(() => {
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+    if (isDesktop) return;
+
+    if (sidebarOpen) {
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
+    }
+  }, [sidebarOpen]);
 
   const currentPath = location.pathname.replace(/\/+$/, '');
   const isNavItemActive = (itemPath) => {
@@ -68,6 +100,16 @@ const ModernAdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-black/30"
+        />
+      )}
+
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -159,7 +201,7 @@ const ModernAdminLayout = () => {
 
       {/* Main Content */}
       <div className="lg:ml-64">
-        <div className="p-6 lg:p-8">
+        <div className="p-4 pt-16 sm:p-6 sm:pt-16 lg:p-8 lg:pt-8">
           <Outlet />
         </div>
       </div>

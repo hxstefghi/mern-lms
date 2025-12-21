@@ -127,28 +127,30 @@ const Tuition = () => {
               <h2 className="text-lg font-semibold">Tuition Breakdown</h2>
             </div>
             <div className="p-6">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                      Description
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {selectedTuition.breakdown.map((item, index) => (
-                    <tr key={index}>
-                      <td className="px-4 py-3 text-sm text-gray-900">{item.description}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                        ₱{item.amount.toLocaleString()}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="min-w-max w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                        Description
+                      </th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                        Amount
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {selectedTuition.breakdown.map((item, index) => (
+                      <tr key={index}>
+                        <td className="px-4 py-3 text-sm text-gray-900">{item.description}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                          ₱{item.amount.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -205,42 +207,44 @@ const Tuition = () => {
                 <h2 className="text-lg font-semibold">Payment History</h2>
               </div>
               <div className="p-6">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                        Date
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                        Method
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                        Reference
-                      </th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
-                        Amount
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {selectedTuition.payments.map((payment, index) => (
-                      <tr key={index}>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {new Date(payment.paymentDate).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {payment.paymentMethod}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {payment.referenceNumber || 'N/A'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                          ₱{payment.amount.toLocaleString()}
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="min-w-max w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                          Date
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                          Method
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                          Reference
+                        </th>
+                        <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                          Amount
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {selectedTuition.payments.map((payment, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {new Date(payment.paymentDate).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {payment.paymentMethod}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {payment.referenceNumber || 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                            ₱{payment.amount.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

@@ -1,32 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Outlet, NavLink, useLocation } from 'react-router-dom';
 import { subjectsAPI } from '../../api';
 import { 
   ArrowLeft, 
-  BookOpen, 
-  User, 
-  Calendar, 
-  Clock, 
-  MapPin,
+  BookOpen,
   FileText,
-  Download,
   Megaphone,
-  GraduationCap,
-  Mail,
-  Video,
-  Link as LinkIcon,
-  Bell
+  Menu,
+  X
 } from 'lucide-react';
 
 const CourseDetail = () => {
   const { subjectId, offeringId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [subject, setSubject] = useState(null);
   const [offering, setOffering] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [announcements, setAnnouncements] = useState([]);
-  const [materials, setMaterials] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const fetchCourseData = useCallback(async () => {
     try {
@@ -47,44 +38,18 @@ const CourseDetail = () => {
     }
   }, [subjectId, offeringId]);
 
-  const loadAnnouncements = useCallback(async () => {
-    try {
-      const response = await subjectsAPI.getOfferingAnnouncements(subjectId, offeringId);
-      setAnnouncements(response.data.announcements || []);
-    } catch (error) {
-      console.error('Error loading announcements:', error);
-      setAnnouncements([]);
-    }
-  }, [subjectId, offeringId]);
-
-  const loadMaterials = useCallback(async () => {
-    try {
-      const response = await subjectsAPI.getOfferingMaterials(subjectId, offeringId);
-      setMaterials(response.data.materials || []);
-    } catch (error) {
-      console.error('Error loading materials:', error);
-      setMaterials([]);
-    }
-  }, [subjectId, offeringId]);
-
   useEffect(() => {
-    const run = async () => {
-      await fetchCourseData();
-      await loadAnnouncements();
-      await loadMaterials();
-    };
-    run();
-  }, [fetchCourseData, loadAnnouncements, loadMaterials]);
+    fetchCourseData();
+  }, [fetchCourseData]);
 
-  const getFileIcon = (type) => {
-    if (type === 'link') return <LinkIcon className="w-6 h-6" />;
-    if (type === 'video') return <Video className="w-6 h-6" />;
-    return <FileText className="w-6 h-6" />;
-  };
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
@@ -92,29 +57,11 @@ const CourseDetail = () => {
 
   if (!subject) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen">
+      <div className="flex flex-col items-center justify-center h-screen p-4">
         <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
           <BookOpen className="w-8 h-8 text-gray-400" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Subject Not Found</h3>
-        <button
-          onClick={() => navigate('/student/courses')}
-          className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors"
-        >
-          Back to Courses
-        </button>
-      </div>
-    );
-  }
-
-  if (!offering) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
-          <Calendar className="w-8 h-8 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Course Offering Not Found</h3>
-        <p className="text-gray-500 mb-4">{subject.code} - {subject.name}</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Course Not Found</h3>
         <button
           onClick={() => navigate('/student/courses')}
           className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors"
@@ -125,235 +72,139 @@ const CourseDetail = () => {
     );
   }
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'announcements', label: 'Announcements', count: announcements.length },
-    { id: 'materials', label: 'Materials', count: materials.length },
+  const navigationItems = [
+    { 
+      path: `/student/courses/${subjectId}/offering/${offeringId}`, 
+      label: 'Overview', 
+      icon: BookOpen,
+      exact: true 
+    },
+    { 
+      path: `/student/courses/${subjectId}/offering/${offeringId}/announcements`, 
+      label: 'Announcements', 
+      icon: Megaphone 
+    },
+    { 
+      path: `/student/courses/${subjectId}/offering/${offeringId}/materials`, 
+      label: 'Materials', 
+      icon: FileText 
+    },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      {/* Back Button */}
-      <button
-        onClick={() => navigate('/student/courses')}
-        className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-      >
-        <ArrowLeft className="w-5 h-5 mr-2" />
-        Back to Courses
-      </button>
-
-      {/* Header Card */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="h-2 bg-indigo-600"></div>
-        <div className="p-8">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <span className="inline-block text-sm font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg mb-3">
-                {subject.code}
-              </span>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{subject.name}</h1>
-              <p className="text-gray-600">{subject.description}</p>
-            </div>
-            <div className="ml-6 shrink-0">
-              <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center">
-                <BookOpen className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </div>
-
-          {/* Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="flex items-center text-gray-500 text-sm mb-1">
-                <GraduationCap className="w-4 h-4 mr-2" />
-                Units
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{subject.units}</div>
-            </div>
-
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="flex items-center text-gray-500 text-sm mb-1">
-                <Calendar className="w-4 h-4 mr-2" />
-                Semester
-              </div>
-              <div className="text-lg font-semibold text-gray-900">{offering.semester}</div>
-            </div>
-
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="flex items-center text-gray-500 text-sm mb-1">
-                <Clock className="w-4 h-4 mr-2" />
-                Schedule
-              </div>
-              <div className="text-sm font-medium text-gray-900">{offering.schedule || 'TBA'}</div>
-            </div>
-
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="flex items-center text-gray-500 text-sm mb-1">
-                <MapPin className="w-4 h-4 mr-2" />
-                Room
-              </div>
-              <div className="text-lg font-semibold text-gray-900">{offering.room || 'TBA'}</div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile Header */}
+      <div className="lg:hidden sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate('/student/courses')}
+            className="flex items-center text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            <span className="font-medium">Back</span>
+          </button>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+          >
+            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </div>
 
-      {/* Instructor Card */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Instructor</h3>
-        <div className="flex items-center">
-          <div className="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg mr-4">
-            {offering.instructor?.firstName?.charAt(0)}{offering.instructor?.lastName?.charAt(0)}
-          </div>
-          <div className="flex-1">
-            <div className="font-semibold text-gray-900">
-              {offering.instructor?.firstName} {offering.instructor?.lastName}
-            </div>
-            <div className="flex items-center text-sm text-gray-500 mt-1">
-              <Mail className="w-4 h-4 mr-1" />
-              {offering.instructor?.email}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="border-b border-gray-100">
-          <div className="flex gap-1 p-2">
-            {tabs.map((tab) => (
+      <div className="flex max-w-7xl mx-auto">
+        {/* Sidebar */}
+        <aside
+          className={`
+            fixed lg:sticky top-0 left-0 h-screen lg:h-auto
+            w-72 bg-white border-r border-gray-200
+            transition-transform duration-300 ease-in-out z-30
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          `}
+        >
+          <div className="h-full overflow-y-auto">
+            {/* Course Header */}
+            <div className="p-6 border-b border-gray-200">
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-indigo-50 text-indigo-600'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                onClick={() => navigate('/student/courses')}
+                className="hidden lg:flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
               >
-                {tab.label}
-                {tab.count !== undefined && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    activeTab === tab.id ? 'bg-indigo-100' : 'bg-gray-100'
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to Courses
               </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-6">
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3">About This Course</h4>
-                <p className="text-gray-600 leading-relaxed">{subject.description}</p>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                  <BookOpen className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-indigo-600 mb-1">
+                    {subject.code}
+                  </div>
+                  <h2 className="text-base font-bold text-gray-900 leading-tight">
+                    {subject.name}
+                  </h2>
+                </div>
               </div>
 
-              {subject.prerequisites && subject.prerequisites.length > 0 && (
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Prerequisites</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {subject.prerequisites.map((prereq, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium"
-                      >
-                        {prereq.code || prereq}
-                      </span>
-                    ))}
-                  </div>
+              {offering && (
+                <div className="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600 space-y-1">
+                  <div>{offering.schoolYear} - {offering.semester}</div>
+                  {offering.instructor && (
+                    <div className="text-xs">
+                      {offering.instructor.firstName} {offering.instructor.lastName}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
 
-          {activeTab === 'announcements' && (
-            <div className="space-y-4">
-              {announcements.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Bell className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Announcements Yet</h3>
-                  <p className="text-gray-500">Your instructor hasn't posted any announcements</p>
-                </div>
-              ) : (
-                announcements.map((announcement) => (
-                  <div key={announcement._id} className="bg-white rounded-2xl p-6 border border-gray-100 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between mb-3">
-                      <h4 className="text-lg font-semibold text-gray-900">{announcement.title}</h4>
-                    </div>
-                    <p className="text-gray-700 leading-relaxed mb-3">{announcement.content}</p>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Bell className="w-4 h-4 mr-1" />
-                      {new Date(announcement.date).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {activeTab === 'materials' && (
-            <div className="space-y-3">
-              {materials.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <p className="text-gray-500">No materials uploaded yet</p>
-                </div>
-              ) : (
-                materials.map((material) => (
-                  <div
-                    key={material._id}
-                    className="flex items-center justify-between border border-gray-100 rounded-2xl p-5 hover:border-indigo-200 hover:shadow-sm transition-all"
-                  >
-                    <div className="flex items-start space-x-4">
-                      <div className="shrink-0">
-                        <div className="w-14 h-14 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg mr-4">
-                          {getFileIcon(material.type)}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900">{material.title}</h3>
-                        {material.description && (
-                          <p className="text-sm text-gray-600 mt-1">{material.description}</p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-2 flex items-center">
-                          <Calendar className="w-3 h-3 mr-1" />
-                          {new Date(material.uploadDate).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                    <a
-                      href={material.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors ml-4"
-                      title="View/Download"
+            {/* Navigation */}
+            <nav className="p-4">
+              <div className="space-y-1">
+                {navigationItems.map((item) => {
+                  const Icon = item.icon;
+                  
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      end={item.exact}
+                      className={({ isActive: navIsActive }) => {
+                        const active = item.exact 
+                          ? navIsActive && location.pathname === item.path 
+                          : navIsActive;
+                        return `flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                          active
+                            ? 'bg-indigo-50 text-indigo-600'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`;
+                      }}
                     >
-                      <Download className="w-5 h-5" />
-                    </a>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+                      <Icon className="w-5 h-5 shrink-0" />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>
+        </aside>
+
+        {/* Backdrop for mobile */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Main Content */}
+        <main className="flex-1 min-w-0">
+          <div className="p-4 sm:p-6 lg:p-8">
+            <Outlet context={{ subject, offering }} />
+          </div>
+        </main>
       </div>
     </div>
   );

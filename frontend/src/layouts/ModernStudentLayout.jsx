@@ -9,13 +9,45 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const ModernStudentLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+
+    const syncSidebarToViewport = (eventOrQuery) => {
+      const matches = 'matches' in eventOrQuery ? eventOrQuery.matches : mediaQuery.matches;
+      setSidebarOpen(matches);
+    };
+
+    syncSidebarToViewport(mediaQuery);
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', syncSidebarToViewport);
+      return () => mediaQuery.removeEventListener('change', syncSidebarToViewport);
+    }
+
+    mediaQuery.addListener(syncSidebarToViewport);
+    return () => mediaQuery.removeListener(syncSidebarToViewport);
+  }, []);
+
+  useEffect(() => {
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+    if (isDesktop) return;
+
+    if (sidebarOpen) {
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
+    }
+  }, [sidebarOpen]);
 
   const currentPath = location.pathname.replace(/\/+$/, '');
   const isNavItemActive = (itemPath) => {
@@ -23,6 +55,9 @@ const ModernStudentLayout = () => {
     if (normalizedItemPath === '/student') return currentPath === '/student';
     return currentPath === normalizedItemPath || currentPath.startsWith(`${normalizedItemPath}/`);
   };
+
+  // Check if we're in CourseDetail page (has its own navigation)
+  const isInCourseDetail = /^\/student\/courses\/[^/]+\/offering\/[^/]+/.test(location.pathname);
 
   const handleLogout = () => {
     logout();
@@ -42,6 +77,16 @@ const ModernStudentLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-black/30"
+        />
+      )}
+
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -88,6 +133,10 @@ const ModernStudentLayout = () => {
                         <Link
                           key={item.path}
                           to={item.path}
+                          onClick={() => {
+                            const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+                            if (isMobile) setSidebarOpen(false);
+                          }}
                           className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                             isActive
                               ? 'bg-blue-50 text-blue-600'
@@ -109,6 +158,10 @@ const ModernStudentLayout = () => {
                 </div>
                 <Link
                   to="/sis/enrollment"
+                  onClick={() => {
+                    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+                    if (isMobile) setSidebarOpen(false);
+                  }}
                   className="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-purple-50 text-purple-600 hover:bg-purple-100"
                 >
                   <GraduationCap className="w-5 h-5" />
@@ -132,18 +185,20 @@ const ModernStudentLayout = () => {
       </div>
 
       {/* Mobile menu button */}
-      <button
-        onClick={() => setSidebarOpen(true)}
-        className={`lg:hidden fixed top-4 left-4 z-40 p-2 bg-white rounded-lg shadow-lg ${
-          sidebarOpen ? 'hidden' : 'block'
-        }`}
-      >
-        <Menu className="w-6 h-6 text-gray-700" />
-      </button>
+      {!isInCourseDetail && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className={`lg:hidden fixed top-4 left-4 z-40 p-2 bg-white rounded-lg shadow-lg ${
+            sidebarOpen ? 'hidden' : 'block'
+          }`}
+        >
+          <Menu className="w-6 h-6 text-gray-700" />
+        </button>
+      )}
 
       {/* Main Content */}
       <div className="lg:ml-64">
-        <div className="p-6 lg:p-8">
+        <div className={`p-4 sm:p-6 lg:p-8 ${isInCourseDetail ? 'pt-4 sm:pt-6 lg:pt-8' : 'pt-16 sm:pt-16 lg:pt-8'}`}>
           <Outlet />
         </div>
       </div>

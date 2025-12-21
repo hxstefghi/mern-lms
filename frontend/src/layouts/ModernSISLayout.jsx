@@ -10,13 +10,45 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const ModernSISLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+
+    const syncSidebarToViewport = (eventOrQuery) => {
+      const matches = 'matches' in eventOrQuery ? eventOrQuery.matches : mediaQuery.matches;
+      setSidebarOpen(matches);
+    };
+
+    syncSidebarToViewport(mediaQuery);
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', syncSidebarToViewport);
+      return () => mediaQuery.removeEventListener('change', syncSidebarToViewport);
+    }
+
+    mediaQuery.addListener(syncSidebarToViewport);
+    return () => mediaQuery.removeListener(syncSidebarToViewport);
+  }, []);
+
+  useEffect(() => {
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+    if (isDesktop) return;
+
+    if (sidebarOpen) {
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
+    }
+  }, [sidebarOpen]);
 
   const handleLogout = () => {
     logout();
@@ -31,7 +63,17 @@ const ModernSISLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 font-['Inter',_sans-serif]">
+    <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-black/30"
+        />
+      )}
+
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -54,7 +96,7 @@ const ModernSISLayout = () => {
           {/* User Info */}
           <div className="p-6 border-b border-gray-100">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+              <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
               </div>
               <div className="flex-1 min-w-0">
@@ -68,6 +110,10 @@ const ModernSISLayout = () => {
           <div className="p-4 border-b border-gray-100">
             <Link
               to="/student"
+              onClick={() => {
+                const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+                if (isMobile) setSidebarOpen(false);
+              }}
               className="flex items-center space-x-2 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -84,6 +130,10 @@ const ModernSISLayout = () => {
                 <Link
                   key={item.path}
                   to={item.path}
+                  onClick={() => {
+                    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+                    if (isMobile) setSidebarOpen(false);
+                  }}
                   className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-purple-50 text-purple-600'
@@ -122,7 +172,7 @@ const ModernSISLayout = () => {
 
       {/* Main Content */}
       <div className="lg:ml-64">
-        <div className="p-6 lg:p-8">
+        <div className="p-4 pt-16 sm:p-6 sm:pt-16 lg:p-8 lg:pt-8">
           <Outlet />
         </div>
       </div>

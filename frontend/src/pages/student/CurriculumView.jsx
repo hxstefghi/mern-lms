@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { studentsAPI, curriculumAPI, enrollmentsAPI } from '../../api';
 import { BookOpen, Clock, User, Award, CheckCircle, AlertCircle, Calendar, Filter } from 'lucide-react';
@@ -13,11 +13,7 @@ const CurriculumView = () => {
   const [semesterFilter, setSemesterFilter] = useState('all');
   const [enrolledSubjects, setEnrolledSubjects] = useState([]);
 
-  useEffect(() => {
-    fetchData();
-  }, [user]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const studentRes = await studentsAPI.getStudentByUserId(user._id);
@@ -43,7 +39,11 @@ const CurriculumView = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -118,7 +118,7 @@ const CurriculumView = () => {
       </div>
 
       {/* Curriculum Info */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg shadow-lg p-6">
+      <div className="bg-indigo-600 text-white rounded-lg shadow-lg p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <div className="text-indigo-100 text-sm mb-1">Your Program</div>
@@ -140,7 +140,7 @@ const CurriculumView = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-4">
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <Filter className="w-5 h-5 text-gray-500" />
           <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -187,7 +187,7 @@ const CurriculumView = () => {
           filteredGroups.map((group, groupIdx) => (
             <div key={groupIdx} className="bg-white rounded-lg shadow-md overflow-hidden">
               {/* Group Header */}
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4">
+              <div className="bg-indigo-600 text-white px-6 py-4">
                 <h3 className="text-lg font-semibold">
                   {group.yearLevel} - {group.semester} Semester
                 </h3>
@@ -213,8 +213,8 @@ const CurriculumView = () => {
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-900">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h4 className="min-w-0 text-lg font-semibold text-gray-900">
                               {subject?.code} - {subject?.name}
                             </h4>
                             {isEnrolled && (
@@ -279,7 +279,7 @@ const CurriculumView = () => {
                                     className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
                                   >
                                     <div className="flex items-center justify-between mb-2">
-                                      <div className="flex items-center space-x-4 text-sm">
+                                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                                         <span className="font-medium text-gray-700">
                                           {offering.schoolYear}
                                         </span>

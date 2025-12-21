@@ -224,7 +224,7 @@ const Users = () => {
                   <tr key={user._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-medium text-xs mr-3">
+                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-medium text-xs mr-3">
                           {user?.firstName?.[0]}{user?.lastName?.[0]}
                         </div>
                         <div>
@@ -295,7 +295,7 @@ const Users = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     First Name

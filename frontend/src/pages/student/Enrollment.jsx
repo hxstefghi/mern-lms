@@ -230,7 +230,7 @@ const Enrollment = () => {
                       {subject.code} - {subject.name}
                     </h3>
                     <p className="text-sm text-gray-600">{subject.description}</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-gray-600">
                       <span>Units: {subject.units}</span>
                       {subject.prerequisites?.length > 0 && (
                         <span className="text-amber-600">
@@ -260,7 +260,7 @@ const Enrollment = () => {
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
+                              <div className="flex flex-wrap items-center gap-3 mb-2">
                                 <span className="font-medium text-gray-900">
                                   Section {String.fromCharCode(65 + idx)}
                                 </span>

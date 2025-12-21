@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { studentsAPI, enrollmentsAPI } from '../../api';
 import { Link } from 'react-router-dom';
@@ -22,11 +22,7 @@ const StudentDashboard = () => {
   const [currentEnrollment, setCurrentEnrollment] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchStudentData();
-  }, [user]);
-
-  const fetchStudentData = async () => {
+  const fetchStudentData = useCallback(async () => {
     try {
       const studentRes = await studentsAPI.getStudentByUserId(user._id);
       setStudent(studentRes.data);
@@ -43,7 +39,11 @@ const StudentDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchStudentData();
+  }, [fetchStudentData]);
 
   if (loading) {
     return (
@@ -74,11 +74,11 @@ const StudentDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Minimalist Header */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <div className="flex items-start justify-between">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-8">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-3">
-                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
                   <GraduationCap className="w-8 h-8 text-white" />
                 </div>
                 <div>
@@ -88,7 +88,7 @@ const StudentDashboard = () => {
                   <p className="text-sm text-gray-500 mt-1">Student Dashboard</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-6 text-sm text-gray-600 ml-1">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600 ml-1">
                 <div className="flex items-center space-x-2">
                   <Award className="w-4 h-4 text-indigo-500" />
                   <span>{student?.program}</span>
@@ -99,7 +99,7 @@ const StudentDashboard = () => {
                 </div>
               </div>
             </div>
-            <div className="text-right bg-gray-50 rounded-xl px-6 py-4">
+            <div className="w-full lg:w-auto text-left lg:text-right bg-gray-50 rounded-xl px-6 py-4">
               <div className="text-xs text-gray-500 mb-1">Student ID</div>
               <div className="text-2xl font-bold text-gray-900">{student?.studentNumber}</div>
             </div>
@@ -114,7 +114,7 @@ const StudentDashboard = () => {
                 ? 'bg-yellow-50 border-yellow-200'
                 : 'bg-gray-50 border-gray-200'
             }`}>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center space-x-3">
                   <StatusIcon className={`w-5 h-5 ${
                     statusConfig.color === 'green' ? 'text-green-600' :
@@ -145,7 +145,7 @@ const StudentDashboard = () => {
         {isIrregular && (
           <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
             <div className="flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-semibold text-orange-900 mb-1">Irregular Enrollment</h3>
                 <p className="text-xs text-orange-700">
@@ -203,7 +203,7 @@ const StudentDashboard = () => {
         {/* Info Notice - Minimalist */}
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
           <div className="flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div>
               <h3 className="text-sm font-semibold text-blue-900 mb-1">Auto-Enrollment System</h3>
               <p className="text-xs text-blue-700 leading-relaxed">
