@@ -14,8 +14,8 @@ const router = express.Router();
 
 router.use(protect);
 
-// Get all enrollments (admin)
-router.route('/').get(authorize('admin'), getEnrollments).post(createEnrollment);
+// Get all enrollments (admin and instructor)
+router.route('/').get(authorize('admin', 'instructor'), getEnrollments).post(createEnrollment);
 
 // Get student enrollments
 router.route('/student/:studentId').get(getStudentEnrollments);

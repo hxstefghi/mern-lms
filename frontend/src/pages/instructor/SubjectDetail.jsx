@@ -28,7 +28,19 @@ const SubjectDetail = () => {
       const subjectData = response.data.subject || response.data;
       setSubject(subjectData);
       
-      const currentOffering = subjectData.offerings?.find(o => o._id === offeringId);
+      console.log('=== SUBJECT DEBUG ===');
+      console.log('Subject data:', subjectData);
+      console.log('Offerings:', subjectData.offerings);
+      console.log('Looking for offering ID:', offeringId);
+      
+      const currentOffering = subjectData.offerings?.find(o => {
+        console.log('Comparing:', o._id, 'with', offeringId);
+        return o._id === offeringId;
+      });
+      
+      console.log('Found offering:', currentOffering);
+      console.log('=== END SUBJECT DEBUG ===');
+      
       setOffering(currentOffering);
       
       if (!currentOffering && subjectData.offerings?.length > 0) {
@@ -49,20 +61,41 @@ const SubjectDetail = () => {
       console.log('=== ENROLLMENT DEBUG ===');
       console.log('Current offeringId from URL:', offeringId);
       console.log('Total enrollments fetched:', allEnrollments.length);
-      console.log('Sample enrollment structure:', allEnrollments[0]);
+      
+      // Log first enrollment structure
+      if (allEnrollments.length > 0) {
+        console.log('First enrollment sample:', JSON.stringify(allEnrollments[0], null, 2));
+      }
       
       const relevantEnrollments = allEnrollments.filter(enrollment => {
         // Only include approved enrollments
         if (enrollment.status !== 'Approved') {
-          console.log('Skipping non-approved enrollment:', enrollment._id, 'Status:', enrollment.status);
           return false;
         }
         
         // Check if any subject in this enrollment matches the offering
         const hasMatchingOffering = enrollment.subjects?.some(subj => {
-          const subjOfferingId = subj.offering?._id || subj.offering;
+          // Get the offering ID - it could be nested or a string
+          let subjOfferingId = null;
+          
+          if (typeof subj.offering === 'object' && subj.offering !== null) {
+            subjOfferingId = subj.offering._id || subj.offering.id;
+          } else {
+            subjOfferingId = subj.offering;
+          }
+          
           const matches = String(subjOfferingId) === String(offeringId);
-          console.log('Checking subject:', subj.subject?.code, 'Offering ID:', subjOfferingId, 'Matches:', matches);
+          
+          if (matches) {
+            console.log('✓ Match found:', {
+              enrollmentId: enrollment._id,
+              studentNumber: enrollment.student?.studentNumber,
+              studentName: `${enrollment.student?.user?.firstName} ${enrollment.student?.user?.lastName}`,
+              subjectCode: subj.subject?.code,
+              offeringId: subjOfferingId
+            });
+          }
+          
           return matches;
         });
         

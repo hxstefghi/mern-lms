@@ -210,7 +210,14 @@ const quizController = {
       const { quizId, studentId } = req.params;
 
       const submission = await QuizSubmission.findOne({ quiz: quizId, student: studentId })
-        .populate('student', 'studentNumber firstName lastName email');
+        .populate({
+          path: 'student',
+          select: 'studentNumber program yearLevel',
+          populate: {
+            path: 'user',
+            select: 'firstName lastName email'
+          }
+        });
 
       if (!submission) {
         return res.status(404).json({ message: 'Submission not found' });
@@ -229,7 +236,14 @@ const quizController = {
       const { quizId } = req.params;
 
       const submissions = await QuizSubmission.find({ quiz: quizId })
-        .populate('student', 'studentNumber firstName lastName email')
+        .populate({
+          path: 'student',
+          select: 'studentNumber program yearLevel',
+          populate: {
+            path: 'user',
+            select: 'firstName lastName email'
+          }
+        })
         .sort({ submittedAt: -1 });
 
       res.json({ submissions });

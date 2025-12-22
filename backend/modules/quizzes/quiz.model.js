@@ -17,6 +17,7 @@ const quizSchema = new mongoose.Schema({
   totalPoints: { type: Number, required: true },
   questions: [questionSchema],
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
+  expiresAt: { type: Date }, // Optional expiration date
 }, {
   timestamps: true,
 });

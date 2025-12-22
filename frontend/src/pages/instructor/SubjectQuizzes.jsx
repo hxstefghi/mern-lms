@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { quizAPI } from '../../api';
-import { Plus, Edit2, Trash2, Eye, CheckCircle, XCircle, Clock, FileText } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, CheckCircle, XCircle, Clock, FileText, Calendar } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const SubjectQuizzes = () => {
@@ -17,6 +17,7 @@ const SubjectQuizzes = () => {
     description: '',
     duration: 60,
     totalPoints: 0,
+    expiresAt: '',
     questions: [
       {
         question: '',
@@ -107,7 +108,11 @@ const SubjectQuizzes = () => {
 
     try {
       const quizData = {
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        duration: formData.duration,
+        expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
+        questions: formData.questions,
         totalPoints,
         status: 'published',
       };
@@ -131,11 +136,26 @@ const SubjectQuizzes = () => {
 
   const handleEdit = (quiz) => {
     setSelectedQuiz(quiz);
+    
+    // Convert UTC date to local datetime-local format
+    let localExpiresAt = '';
+    if (quiz.expiresAt) {
+      const date = new Date(quiz.expiresAt);
+      // Format: YYYY-MM-DDTHH:MM (local time)
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      localExpiresAt = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+    
     setFormData({
       title: quiz.title,
       description: quiz.description || '',
       duration: quiz.duration,
       totalPoints: quiz.totalPoints,
+      expiresAt: localExpiresAt,
       questions: quiz.questions.map(q => ({
         ...q,
         options: q.options || ['', '', '', ''],
@@ -175,6 +195,7 @@ const SubjectQuizzes = () => {
       description: '',
       duration: 60,
       totalPoints: 0,
+      expiresAt: '',
       questions: [
         {
           question: '',
@@ -229,67 +250,106 @@ const SubjectQuizzes = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {quizzes.map((quiz) => (
-            <div key={quiz._id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{quiz.title}</h3>
-                  {quiz.description && (
-                    <p className="text-sm text-gray-600 mb-3">{quiz.description}</p>
-                  )}
-                </div>
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    quiz.status === 'published'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}
-                >
-                  {quiz.status}
-                </span>
-              </div>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Clock className="w-4 h-4 mr-2" />
-                  <span>{quiz.duration} minutes</span>
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <FileText className="w-4 h-4 mr-2" />
-                  <span>{quiz.questions?.length || 0} questions</span>
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  <span>{quiz.totalPoints} points</span>
-                </div>
-              </div>
-
-              <div className="flex space-x-2 pt-4 border-t border-gray-100">
-                <button
-                  onClick={() => handleViewSubmissions(quiz)}
-                  className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>View</span>
-                </button>
-                <button
-                  onClick={() => handleEdit(quiz)}
-                  className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  <span>Edit</span>
-                </button>
-                <button
-                  onClick={() => handleDelete(quiz._id)}
-                  className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete</span>
-                </button>
-              </div>
-            </div>
-          ))}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Quiz Details
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Duration & Points
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status & Expiration
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {quizzes.map((quiz) => {
+                  const isExpired = quiz.expiresAt && new Date(quiz.expiresAt) < new Date();
+                  return (
+                    <tr key={quiz._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{quiz.title}</div>
+                          {quiz.description && (
+                            <div className="text-sm text-gray-500 mt-1">{quiz.description}</div>
+                          )}
+                          <div className="flex items-center text-xs text-gray-500 mt-2">
+                            <FileText className="w-3 h-3 mr-1" />
+                            {quiz.questions?.length || 0} questions
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          <div className="flex items-center mb-1">
+                            <Clock className="w-4 h-4 mr-1 text-gray-400" />
+                            {quiz.duration} minutes
+                          </div>
+                          <div className="flex items-center">
+                            <CheckCircle className="w-4 h-4 mr-1 text-gray-400" />
+                            {quiz.totalPoints} points
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                              quiz.status === 'published'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}
+                          >
+                            {quiz.status}
+                          </span>
+                          {quiz.expiresAt && (
+                            <div className={`flex items-center text-xs mt-2 ${
+                              isExpired ? 'text-red-600' : 'text-gray-500'
+                            }`}>
+                              <Calendar className="w-3 h-3 mr-1" />
+                              {isExpired ? 'Expired' : 'Expires'}: {new Date(quiz.expiresAt).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => handleViewSubmissions(quiz)}
+                            className="inline-flex items-center px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Submissions"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(quiz)}
+                            className="inline-flex items-center px-3 py-1 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Edit Quiz"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(quiz._id)}
+                            className="inline-flex items-center px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Quiz"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -341,6 +401,21 @@ const SubjectQuizzes = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   placeholder="Optional quiz description"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Expiration Date (Optional)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.expiresAt}
+                  onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave empty for no expiration
+                </p>
               </div>
 
               {/* Questions */}
@@ -538,9 +613,9 @@ const SubjectQuizzes = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-semibold text-gray-900">
-                          {submission.student?.firstName} {submission.student?.lastName}
+                          {submission.student?.user?.firstName || 'Unknown'} {submission.student?.user?.lastName || 'Student'}
                         </h3>
-                        <p className="text-sm text-gray-600">{submission.student?.studentNumber}</p>
+                        <p className="text-sm text-gray-600">{submission.student?.studentNumber || 'N/A'}</p>
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-indigo-600">
