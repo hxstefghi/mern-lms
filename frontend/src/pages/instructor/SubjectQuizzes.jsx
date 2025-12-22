@@ -98,7 +98,8 @@ const SubjectQuizzes = () => {
         toast.error(`Question ${i + 1} has no correct answer selected`);
         return;
       }
-      if (q.options.some(opt => !opt.trim())) {
+      // Only validate options for multiple-choice questions
+      if (q.type === 'multiple-choice' && q.options.some(opt => !opt.trim())) {
         toast.error(`Question ${i + 1} has empty options`);
         return;
       }
@@ -107,12 +108,34 @@ const SubjectQuizzes = () => {
     const totalPoints = calculateTotalPoints();
 
     try {
+      // Clean up questions data based on type
+      const cleanedQuestions = formData.questions.map(q => {
+        if (q.type === 'true-false') {
+          // For true/false, we don't need the options array
+          return {
+            question: q.question,
+            type: q.type,
+            correctAnswer: q.correctAnswer,
+            points: q.points,
+            options: ['True', 'False'], // Set proper options for true/false
+          };
+        }
+        // For multiple-choice, keep the options
+        return {
+          question: q.question,
+          type: q.type,
+          correctAnswer: q.correctAnswer,
+          points: q.points,
+          options: q.options,
+        };
+      });
+
       const quizData = {
         title: formData.title,
         description: formData.description,
         duration: formData.duration,
         expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
-        questions: formData.questions,
+        questions: cleanedQuestions,
         totalPoints,
         status: 'published',
       };
