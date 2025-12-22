@@ -273,106 +273,85 @@ const SubjectQuizzes = () => {
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quiz Details
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Duration & Points
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status & Expiration
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {quizzes.map((quiz) => {
-                  const isExpired = quiz.expiresAt && new Date(quiz.expiresAt) < new Date();
-                  return (
-                    <tr key={quiz._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{quiz.title}</div>
-                          {quiz.description && (
-                            <div className="text-sm text-gray-500 mt-1">{quiz.description}</div>
-                          )}
-                          <div className="flex items-center text-xs text-gray-500 mt-2">
-                            <FileText className="w-3 h-3 mr-1" />
-                            {quiz.questions?.length || 0} questions
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          <div className="flex items-center mb-1">
-                            <Clock className="w-4 h-4 mr-1 text-gray-400" />
-                            {quiz.duration} minutes
-                          </div>
-                          <div className="flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-1 text-gray-400" />
-                            {quiz.totalPoints} points
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                              quiz.status === 'published'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}
-                          >
-                            {quiz.status}
-                          </span>
-                          {quiz.expiresAt && (
-                            <div className={`flex items-center text-xs mt-2 ${
-                              isExpired ? 'text-red-600' : 'text-gray-500'
-                            }`}>
-                              <Calendar className="w-3 h-3 mr-1" />
-                              {isExpired ? 'Expired' : 'Expires'}: {new Date(quiz.expiresAt).toLocaleString()}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end space-x-2">
-                          <button
-                            onClick={() => handleViewSubmissions(quiz)}
-                            className="inline-flex items-center px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="View Submissions"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(quiz)}
-                            className="inline-flex items-center px-3 py-1 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="Edit Quiz"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(quiz._id)}
-                            className="inline-flex items-center px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete Quiz"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+          {quizzes.map((quiz) => {
+            const isExpired = quiz.expiresAt && new Date(quiz.expiresAt) < new Date();
+            return (
+              <div key={quiz._id} className="bg-white rounded-lg border-2 border-gray-200 p-4 md:p-6 hover:border-indigo-500 hover:shadow-lg transition-all flex flex-col">
+                <div className="flex justify-between items-start mb-3 md:mb-4">
+                  <h3 className="text-base md:text-lg font-semibold text-gray-900 flex-1 pr-2 line-clamp-2">{quiz.title}</h3>
+                  <span
+                    className={`px-2 md:px-3 py-1 text-xs font-medium rounded-full shrink-0 ${
+                      quiz.status === 'published'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}
+                  >
+                    {quiz.status}
+                  </span>
+                </div>
+
+                {quiz.description && (
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{quiz.description}</p>
+                )}
+
+                <div className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-1">
+                  <div className="flex items-center text-gray-700">
+                    <Clock className="w-4 md:w-5 h-4 md:h-5 mr-2 md:mr-3 text-gray-400 shrink-0" />
+                    <span className="text-xs md:text-sm">{quiz.duration} minutes</span>
+                  </div>
+
+                  <div className="flex items-center text-gray-700">
+                    <FileText className="w-4 md:w-5 h-4 md:h-5 mr-2 md:mr-3 text-gray-400 shrink-0" />
+                    <span className="text-xs md:text-sm">{quiz.questions?.length || 0} questions</span>
+                  </div>
+
+                  <div className="flex items-center text-gray-700">
+                    <CheckCircle className="w-4 md:w-5 h-4 md:h-5 mr-2 md:mr-3 text-gray-400 shrink-0" />
+                    <span className="text-xs md:text-sm">{quiz.totalPoints} points</span>
+                  </div>
+
+                  {quiz.expiresAt && (
+                    <div className={`flex items-center ${
+                      isExpired ? 'text-red-600' : 'text-gray-700'
+                    }`}>
+                      <Calendar className="w-4 md:w-5 h-4 md:h-5 mr-2 md:mr-3 shrink-0" />
+                      <span className="text-xs md:text-sm truncate">
+                        {isExpired ? 'Expired' : 'Expires'}: {new Date(quiz.expiresAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-3 md:pt-4 border-t border-gray-100 mt-auto">
+                  <button
+                    onClick={() => handleViewSubmissions(quiz)}
+                    className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex-1 min-w-[70px]"
+                    title="View Submissions"
+                  >
+                    <Eye className="w-3 h-3" />
+                    <span>View</span>
+                  </button>
+                  <button
+                    onClick={() => handleEdit(quiz)}
+                    className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex-1 min-w-[70px]"
+                    title="Edit Quiz"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(quiz._id)}
+                    className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-1 min-w-[70px]"
+                    title="Delete Quiz"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

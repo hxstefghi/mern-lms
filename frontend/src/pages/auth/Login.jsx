@@ -42,11 +42,11 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-['Inter',_sans-serif]">
-      <div className="max-w-md w-full bg-white rounded-lg border border-gray-200 p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">EduPortal</h1>
-          <p className="text-gray-600 mt-2 text-sm">Sign in to your account</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-['Inter',_sans-serif] px-4 py-6">
+      <div className="max-w-md w-full bg-white rounded-lg border border-gray-200 p-6 sm:p-8">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">EduPortal</h1>
+          <p className="text-gray-600 mt-2 text-xs sm:text-sm">Sign in to your account</p>
         </div>
 
         {error && (
@@ -55,13 +55,13 @@ const Login = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
               <input
                 type="email"
                 id="email"
@@ -69,18 +69,18 @@ const Login = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="you@example.com"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
               <input
                 type="password"
                 id="password"
@@ -88,7 +88,7 @@ const Login = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="••••••••"
               />
             </div>
@@ -97,13 +97,13 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2.5 px-4 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors flex items-center justify-center space-x-2"
+            className="w-full bg-indigo-600 text-white py-2 sm:py-2.5 px-4 text-sm sm:text-base rounded-lg hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors flex items-center justify-center space-x-2"
           >
             {loading ? (
               <span>Signing in...</span>
             ) : (
               <>
-                <LogIn className="w-5 h-5" />
+                <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>Sign In</span>
               </>
             )}

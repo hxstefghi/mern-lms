@@ -19,6 +19,7 @@ import CourseOverview from './pages/student/CourseOverview';
 import CourseAnnouncements from './pages/student/CourseAnnouncements';
 import CourseMaterials from './pages/student/CourseMaterials';
 import CourseQuizzes from './pages/student/CourseQuizzes';
+import QuizDetail from './pages/student/QuizDetail';
 import TakeQuiz from './pages/student/TakeQuiz';
 import CurriculumView from './pages/student/CurriculumView';
 import Enrollment from './pages/student/Enrollment';
@@ -70,6 +71,7 @@ function App() {
             <Route path="courses/:subjectId/offering/:offeringId" element={<CourseDetail />}>
               <Route index element={<CourseOverview />} />
               <Route path="quizzes" element={<CourseQuizzes />} />
+              <Route path="quizzes/:quizId/detail" element={<QuizDetail />} />
               <Route path="announcements" element={<CourseAnnouncements />} />
               <Route path="materials" element={<CourseMaterials />} />
             </Route>
