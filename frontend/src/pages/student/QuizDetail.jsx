@@ -67,7 +67,7 @@ const QuizDetail = () => {
       toast.error('This quiz has expired');
       return;
     }
-    navigate(`/student/courses/${offeringId}/quizzes/${quizId}/take`);
+    navigate(`../quizzes/${quizId}/take`);
   };
 
   if (loading) {

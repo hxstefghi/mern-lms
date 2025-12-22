@@ -119,7 +119,7 @@ const TakeQuiz = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex justify-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
@@ -130,8 +130,7 @@ const TakeQuiz = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="p-6 space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex justify-between items-start mb-4">
@@ -273,7 +272,6 @@ const TakeQuiz = () => {
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 };

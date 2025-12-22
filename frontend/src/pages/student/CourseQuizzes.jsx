@@ -103,7 +103,7 @@ const CourseQuizzes = () => {
                 onClick={() => handleQuizClick(quiz)}
                 className="bg-white rounded-lg border-2 border-gray-200 p-6 hover:border-indigo-500 hover:shadow-lg transition-all cursor-pointer"
               >
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-3">
                   <h3 className="text-lg font-semibold text-gray-900 flex-1 pr-2">{quiz.title}</h3>
                   {hasSubmission ? (
                     <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 shrink-0">
@@ -119,6 +119,10 @@ const CourseQuizzes = () => {
                     </span>
                   )}
                 </div>
+
+                {quiz.description && (
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{quiz.description}</p>
+                )}
 
                 <div className="space-y-3">
                   <div className="flex items-center text-gray-700">

@@ -72,10 +72,10 @@ function App() {
               <Route index element={<CourseOverview />} />
               <Route path="quizzes" element={<CourseQuizzes />} />
               <Route path="quizzes/:quizId/detail" element={<QuizDetail />} />
+              <Route path="quizzes/:quizId/take" element={<TakeQuiz />} />
               <Route path="announcements" element={<CourseAnnouncements />} />
               <Route path="materials" element={<CourseMaterials />} />
             </Route>
-            <Route path="courses/:offeringId/quizzes/:quizId/take" element={<TakeQuiz />} />
             <Route path="curriculum" element={<CurriculumView />} />
           </Route>
 
