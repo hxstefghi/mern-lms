@@ -92,7 +92,7 @@ const CourseQuizzes = () => {
           <p className="text-gray-600">Check back later for new quizzes</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {quizzes.map((quiz) => {
             const isExpired = quiz.expiresAt && new Date(quiz.expiresAt) < new Date();
             const hasSubmission = quiz.submission;
