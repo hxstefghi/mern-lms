@@ -62,12 +62,16 @@ const RegistrationCard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">School Year</label>
-            <input
-              type="text"
+            <select
               value={schoolYear}
               onChange={(e) => setSchoolYear(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-            />
+            >
+              <option value="2024-2025">2024-2025</option>
+              <option value="2025-2026">2025-2026</option>
+              <option value="2026-2027">2026-2027</option>
+              <option value="2027-2028">2027-2028</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>

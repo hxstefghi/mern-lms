@@ -18,6 +18,7 @@ import CourseDetail from './pages/student/CourseDetail';
 import CourseOverview from './pages/student/CourseOverview';
 import CourseAnnouncements from './pages/student/CourseAnnouncements';
 import CourseMaterials from './pages/student/CourseMaterials';
+import CourseQuizzes from './pages/student/CourseQuizzes';
 import CurriculumView from './pages/student/CurriculumView';
 import Enrollment from './pages/student/Enrollment';
 import RegistrationCard from './pages/student/RegistrationCard';
@@ -42,6 +43,7 @@ import MySubjects from './pages/instructor/MySubjects';
 import SubjectDetail from './pages/instructor/SubjectDetail';
 import SubjectOverview from './pages/instructor/SubjectOverview';
 import SubjectStudents from './pages/instructor/SubjectStudents';
+import SubjectQuizzes from './pages/instructor/SubjectQuizzes';
 import SubjectAnnouncements from './pages/instructor/SubjectAnnouncements';
 import SubjectMaterials from './pages/instructor/SubjectMaterials';
 
@@ -66,6 +68,7 @@ function App() {
             <Route path="courses" element={<Courses />} />
             <Route path="courses/:subjectId/offering/:offeringId" element={<CourseDetail />}>
               <Route index element={<CourseOverview />} />
+              <Route path="quizzes" element={<CourseQuizzes />} />
               <Route path="announcements" element={<CourseAnnouncements />} />
               <Route path="materials" element={<CourseMaterials />} />
             </Route>
@@ -123,6 +126,7 @@ function App() {
             <Route path="subjects/:subjectId/offering/:offeringId" element={<SubjectDetail />}>
               <Route index element={<SubjectOverview />} />
               <Route path="students" element={<SubjectStudents />} />
+              <Route path="quizzes" element={<SubjectQuizzes />} />
               <Route path="announcements" element={<SubjectAnnouncements />} />
               <Route path="materials" element={<SubjectMaterials />} />
             </Route>

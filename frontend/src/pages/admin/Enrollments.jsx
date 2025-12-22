@@ -533,14 +533,18 @@ const Enrollments = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     School Year *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="e.g., 2024-2025"
                     value={enrollmentData.schoolYear}
                     onChange={(e) => setEnrollmentData({ ...enrollmentData, schoolYear: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                  >
+                    <option value="">Select school year</option>
+                    <option value="2024-2025">2024-2025</option>
+                    <option value="2025-2026">2025-2026</option>
+                    <option value="2026-2027">2026-2027</option>
+                    <option value="2027-2028">2027-2028</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -789,14 +793,18 @@ const Enrollments = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     School Year *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="e.g., 2024-2025"
                     value={blockedSectionData.schoolYear}
                     onChange={(e) => setBlockedSectionData({ ...blockedSectionData, schoolYear: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  />
+                  >
+                    <option value="">Select school year</option>
+                    <option value="2024-2025">2024-2025</option>
+                    <option value="2025-2026">2025-2026</option>
+                    <option value="2026-2027">2026-2027</option>
+                    <option value="2027-2028">2027-2028</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

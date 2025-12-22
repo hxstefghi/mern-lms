@@ -8,7 +8,8 @@ import {
   Megaphone,
   Menu,
   X,
-  Users
+  Users,
+  ClipboardList
 } from 'lucide-react';
 
 const SubjectDetail = () => {
@@ -124,6 +125,11 @@ const SubjectDetail = () => {
       path: `/instructor/subjects/${subjectId}/offering/${offeringId}/students`, 
       label: 'Students', 
       icon: Users 
+    },
+    { 
+      path: `/instructor/subjects/${subjectId}/offering/${offeringId}/quizzes`, 
+      label: 'Quizzes', 
+      icon: ClipboardList 
     },
     { 
       path: `/instructor/subjects/${subjectId}/offering/${offeringId}/announcements`, 

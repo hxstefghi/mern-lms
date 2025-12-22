@@ -7,7 +7,8 @@ import {
   FileText,
   Megaphone,
   Menu,
-  X
+  X,
+  ClipboardList
 } from 'lucide-react';
 
 const CourseDetail = () => {
@@ -78,6 +79,11 @@ const CourseDetail = () => {
       label: 'Overview', 
       icon: BookOpen,
       exact: true 
+    },
+    { 
+      path: `/student/courses/${subjectId}/offering/${offeringId}/quizzes`, 
+      label: 'Quizzes', 
+      icon: ClipboardList 
     },
     { 
       path: `/student/courses/${subjectId}/offering/${offeringId}/announcements`, 

@@ -111,3 +111,16 @@ export const curriculumAPI = {
   updateCurriculum: (id, curriculumData) => api.put(`/curriculum/${id}`, curriculumData),
   deleteCurriculum: (id) => api.delete(`/curriculum/${id}`),
 };
+
+// Quiz API
+export const quizAPI = {
+  createQuiz: (subjectId, offeringId, quizData) => 
+    api.post(`/subjects/${subjectId}/offerings/${offeringId}/quizzes`, quizData),
+  getQuizzesByOffering: (offeringId) => api.get(`/offerings/${offeringId}/quizzes`),
+  getQuiz: (quizId) => api.get(`/quizzes/${quizId}`),
+  updateQuiz: (quizId, quizData) => api.put(`/quizzes/${quizId}`, quizData),
+  deleteQuiz: (quizId) => api.delete(`/quizzes/${quizId}`),
+  submitQuiz: (quizId, submissionData) => api.post(`/quizzes/${quizId}/submit`, submissionData),
+  getSubmission: (quizId, studentId) => api.get(`/quizzes/${quizId}/submissions/${studentId}`),
+  getQuizSubmissions: (quizId) => api.get(`/quizzes/${quizId}/submissions`),
+};

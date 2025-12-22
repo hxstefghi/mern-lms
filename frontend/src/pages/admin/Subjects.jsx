@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { subjectsAPI, usersAPI } from '../../api';
+import { subjectsAPI, usersAPI, programsAPI } from '../../api';
 import { BookOpen, Plus, Edit2, Trash2, Search, X, Users } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const Subjects = () => {
   const [subjects, setSubjects] = useState([]);
   const [instructors, setInstructors] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [programsLoading, setProgramsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showOfferingModal, setShowOfferingModal] = useState(false);
@@ -35,6 +37,7 @@ const Subjects = () => {
   useEffect(() => {
     fetchSubjects();
     fetchInstructors();
+    fetchPrograms();
   }, []);
 
   const fetchSubjects = async () => {
@@ -56,6 +59,23 @@ const Subjects = () => {
       setInstructors(response.data || []);
     } catch (error) {
       console.error('Error fetching instructors:', error);
+    }
+  };
+
+  const fetchPrograms = async () => {
+    try {
+      setProgramsLoading(true);
+      const response = await programsAPI.getPrograms({ limit: 1000 });
+      console.log('Programs API response:', response.data);
+      // Backend returns { success, count, data: programs }
+      const programsData = response.data.data || response.data.programs || response.data || [];
+      console.log('Parsed programs:', programsData);
+      setPrograms(programsData);
+    } catch (error) {
+      console.error('Error fetching programs:', error);
+      setPrograms([]);
+    } finally {
+      setProgramsLoading(false);
     }
   };
 
@@ -206,6 +226,8 @@ const Subjects = () => {
         </div>
         <button
           onClick={() => {
+            console.log('Add Subject button clicked');
+            console.log('Programs loaded:', programs);
             resetForm();
             setShowModal(true);
           }}
@@ -351,12 +373,13 @@ const Subjects = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto my-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-900">
                 {editingSubject ? 'Edit Subject' : 'Add New Subject'}
               </h2>
               <button
+                type="button"
                 onClick={() => {
                   setShowModal(false);
                   resetForm();
@@ -377,7 +400,7 @@ const Subjects = () => {
                     type="text"
                     required
                     placeholder="e.g., CS101"
-                    value={formData.code}
+                    value={formData.code || ''}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent uppercase"
                   />
@@ -391,8 +414,8 @@ const Subjects = () => {
                     required
                     min="1"
                     max="6"
-                    value={formData.units}
-                    onChange={(e) => setFormData({ ...formData, units: parseInt(e.target.value) })}
+                    value={formData.units || 3}
+                    onChange={(e) => setFormData({ ...formData, units: parseInt(e.target.value) || 3 })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
@@ -406,7 +429,7 @@ const Subjects = () => {
                   type="text"
                   required
                   placeholder="e.g., Introduction to Programming"
-                  value={formData.name}
+                  value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
@@ -418,7 +441,7 @@ const Subjects = () => {
                 </label>
                 <textarea
                   rows="3"
-                  value={formData.description}
+                  value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="Brief description of the subject"
@@ -429,14 +452,31 @@ const Subjects = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Program *
                 </label>
-                <input
-                  type="text"
+                <select
                   required
-                  placeholder="e.g., BS Computer Science"
-                  value={formData.program}
+                  value={formData.program || ''}
                   onChange={(e) => setFormData({ ...formData, program: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
+                  disabled={programsLoading || programs.length === 0}
+                >
+                  <option value="">
+                    {programsLoading 
+                      ? 'Loading programs...' 
+                      : programs.length === 0 
+                        ? 'No programs available - Please create programs first' 
+                        : 'Select a program'}
+                  </option>
+                  {Array.isArray(programs) && programs.map((program) => (
+                    <option key={program._id} value={program.code}>
+                      {program.code} - {program.name}
+                    </option>
+                  ))}
+                </select>
+                {!programsLoading && programs.length === 0 && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Please create at least one program in the Programs page before adding subjects.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -445,7 +485,7 @@ const Subjects = () => {
                     Year Level *
                   </label>
                   <select
-                    value={formData.yearLevel}
+                    value={formData.yearLevel || '1st Year'}
                     onChange={(e) => setFormData({ ...formData, yearLevel: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
@@ -460,7 +500,7 @@ const Subjects = () => {
                     Semester *
                   </label>
                   <select
-                    value={formData.semester}
+                    value={formData.semester || '1st'}
                     onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
@@ -475,6 +515,7 @@ const Subjects = () => {
                 <button
                   type="submit"
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                  disabled={programsLoading || programs.length === 0}
                 >
                   {editingSubject ? 'Update' : 'Create'}
                 </button>
