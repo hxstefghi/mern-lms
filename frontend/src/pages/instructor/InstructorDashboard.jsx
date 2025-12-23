@@ -17,6 +17,10 @@ const InstructorDashboard = () => {
     fetchStats();
   }, [user]);
 
+  useEffect(() => {
+    document.title = 'Instructor Dashboard | LMS';
+  }, []);
+
   const fetchStats = async () => {
     try {
       const response = await subjectsAPI.getSubjects({ limit: 1000 });

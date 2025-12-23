@@ -52,6 +52,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 font-['Inter',_sans-serif] px-4 py-6">
+      <title>Login</title>
       <div className="max-w-md w-full bg-white rounded-lg border border-gray-200 p-6 sm:p-8">
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">EduPortal</h1>

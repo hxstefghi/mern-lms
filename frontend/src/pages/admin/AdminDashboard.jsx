@@ -25,6 +25,10 @@ const AdminDashboard = () => {
     fetchStats();
   }, []);
 
+  useEffect(() => {
+    document.title = 'Admin Dashboard | LMS';
+  }, []);
+
   const fetchStats = async () => {
     try {
       const [studentsRes, subjectsRes, programsRes, enrollmentsRes, instructorsRes] = await Promise.all([

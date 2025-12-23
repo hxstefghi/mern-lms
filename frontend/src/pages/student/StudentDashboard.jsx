@@ -45,6 +45,10 @@ const StudentDashboard = () => {
     fetchStudentData();
   }, [fetchStudentData]);
 
+  useEffect(() => {
+    document.title = 'Student Dashboard | LMS';
+  }, []);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
