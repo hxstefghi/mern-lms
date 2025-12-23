@@ -19,26 +19,35 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    
     setError('');
     setLoading(true);
 
-    const result = await login(formData);
+    try {
+      const result = await login(formData);
 
-    if (result.success) {
-      // Redirect based on role
-      const role = result.user.role;
-      if (role === 'admin') {
-        navigate('/admin');
-      } else if (role === 'student') {
-        navigate('/student');
-      } else if (role === 'instructor') {
-        navigate('/instructor');
+      if (result.success) {
+        // Redirect based on role
+        const role = result.user.role;
+        if (role === 'admin') {
+          navigate('/admin');
+        } else if (role === 'student') {
+          navigate('/student');
+        } else if (role === 'instructor') {
+          navigate('/instructor');
+        }
+      } else {
+        setError(result.error || 'Invalid email or password');
+        setLoading(false);
       }
-    } else {
-      setError(result.error);
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      setError('An unexpected error occurred. Please try again.');
+      setLoading(false);
     }
-
-    setLoading(false);
+    
+    return false;
   };
 
   return (
@@ -55,7 +64,7 @@ const Login = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-3 sm:space-y-4">
           <div>
             <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Email Address
