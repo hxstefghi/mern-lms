@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, X, GraduationCap, Users, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, GraduationCap } from 'lucide-react';
 import { programsAPI } from '../../api';
 import { toast } from 'react-toastify';
 
@@ -16,8 +16,6 @@ const Programs = () => {
     department: '',
     degree: 'Bachelor',
     duration: { years: 4, semesters: 8 },
-    capacity: 50,
-    tuitionFee: { amount: 0, currency: 'PHP' },
     status: 'active',
   });
 
@@ -68,8 +66,6 @@ const Programs = () => {
       department: program.department || '',
       degree: program.degree || 'Bachelor',
       duration: program.duration || { years: 4, semesters: 8 },
-      capacity: program.capacity || 50,
-      tuitionFee: program.tuitionFee || { amount: 0, currency: 'PHP' },
       status: program.status || 'active',
     });
     setShowModal(true);
@@ -96,8 +92,6 @@ const Programs = () => {
       department: '',
       degree: 'Bachelor',
       duration: { years: 4, semesters: 8 },
-      capacity: 50,
-      tuitionFee: { amount: 0, currency: 'PHP' },
       status: 'active',
     });
     setEditingProgram(null);
@@ -182,25 +176,6 @@ const Programs = () => {
                   <p className="text-sm text-gray-600 line-clamp-2">
                     {program.description}
                   </p>
-                )}
-              </div>
-
-              <div className="space-y-2 mb-4 text-sm text-gray-600">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center">
-                    <Users className="w-4 h-4 mr-1" />
-                    Capacity
-                  </span>
-                  <span className="font-medium">{program.enrolledStudents || 0}/{program.capacity}</span>
-                </div>
-                {program.tuitionFee && (
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center">
-                      <DollarSign className="w-4 h-4 mr-1" />
-                      Tuition
-                    </span>
-                    <span className="font-medium">₱{(program.tuitionFee.amount || 0).toLocaleString()}</span>
-                  </div>
                 )}
               </div>
 
@@ -335,7 +310,7 @@ const Programs = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Years *
@@ -369,37 +344,6 @@ const Programs = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Capacity *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    value={formData.capacity}
-                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tuition Fee (PHP) *
-                </label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  value={formData.tuitionFee.amount}
-                  onChange={(e) => setFormData({ 
-                    ...formData, 
-                    tuitionFee: { ...formData.tuitionFee, amount: parseFloat(e.target.value) }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
               </div>
 
               <div className="flex space-x-3 pt-4">

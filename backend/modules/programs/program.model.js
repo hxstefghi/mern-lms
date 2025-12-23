@@ -51,26 +51,10 @@ const programSchema = new mongoose.Schema(
         trim: true,
       },
     ],
-    capacity: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
     enrolledStudents: {
       type: Number,
       default: 0,
       min: 0,
-    },
-    tuitionFee: {
-      amount: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      currency: {
-        type: String,
-        default: 'PHP',
-      },
     },
     coordinator: {
       name: {
@@ -91,11 +75,6 @@ const programSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-// Virtual for available slots
-programSchema.virtual('availableSlots').get(function () {
-  return this.capacity - this.enrolledStudents;
-});
 
 // Virtual for full program name with degree
 programSchema.virtual('fullName').get(function () {
